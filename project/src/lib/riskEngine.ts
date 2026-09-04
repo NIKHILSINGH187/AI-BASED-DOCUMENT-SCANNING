@@ -1,3 +1,4 @@
+
 import type { LivenessResult, OcrResult, ForensicResult, BiometricResult, GovernmentVerification, IdentityBinding, RiskLevel } from './types';
 
 export interface RiskResult {
@@ -29,43 +30,74 @@ export function evaluateRisk(
   const ocrConfidence = ocr?.ocr_confidence || 0;
   const forensicStatus = forensic?.status || 'PENDING';
   const forensicPassed = forensicStatus === 'PASSED';
+  const forensicFlagged = forensicStatus === 'FLAGGED';
+  const forensicReview = forensicStatus === 'REVIEW';
+  const tamperingProbability = forensic?.tampering_probability ?? 0;
   const faceMatchStatus = biometric?.match_status || 'PENDING';
   const govStatus = government?.status || 'NOT_CONFIGURED';
   const govConnected = govStatus === 'VERIFIED';
   const govUnavailable = govStatus === 'NOT_CONFIGURED' || govStatus === 'UNAVAILABLE';
   const identityStatus = identityBinding?.identity_status || 'PENDING';
+  const identityMismatch = identityStatus === 'MISMATCH';
   const antiSpoof = liveness?.anti_spoof_status || 'MANUAL REVIEW';
+  const antiSpoofFailed = antiSpoof.includes('WARNING') || antiSpoof.includes('FAIL');
+
+  // Forensics contributes to risk in proportion to how suspicious the
+  // document actually looked, instead of a flat penalty for "not PASSED".
+  // A FLAGGED result (multiple anomalies / high tampering probability) is
+  // treated as a much bigger red flag than a single-anomaly REVIEW result.
+  let forensicPenalty = 0;
+  if (forensicFlagged) forensicPenalty = 35;
+  else if (forensicReview) forensicPenalty = 15;
+  else if (!forensicPassed) forensicPenalty = 10; // PENDING / MODEL_NOT_CONNECTED
+  forensicPenalty = Math.max(forensicPenalty, Math.round(tamperingProbability * 0.3));
 
   let riskScore = 0;
   if (!livenessPassed) riskScore += 25;
   if (!ocrCompleted || ocrConfidence < 0.5) riskScore += 15;
-  if (!forensicPassed) riskScore += 20;
-  if (faceMatchStatus === 'NO MATCH') riskScore += 25;
+  riskScore += forensicPenalty;
+  if (faceMatchStatus === 'NO MATCH' || faceMatchStatus === 'NO_MATCH') riskScore += 25;
   if (govUnavailable) riskScore += 10;
-  if (identityStatus === 'MISMATCH') riskScore += 30;
-  if (antiSpoof.includes('WARNING') || antiSpoof.includes('FAIL')) riskScore += 15;
+  if (identityMismatch) riskScore += 30;
+  if (antiSpoofFailed) riskScore += 15;
 
   riskScore = Math.min(100, riskScore);
+
+  // Collect every real problem so the reason shown to the reviewer names
+  // the actual failing check(s) instead of a single canned sentence that
+  // only ever mentions government verification.
+  const reasons: string[] = [];
+  if (identityMismatch) reasons.push('OCR and government/reference data do not match');
+  if (forensicFlagged) reasons.push(`document forensics flagged this document as likely tampered (tampering probability ${Math.round(tamperingProbability)}%)`);
+  else if (forensicReview) reasons.push(`document forensics found an anomaly that needs manual review (tampering probability ${Math.round(tamperingProbability)}%)`);
+  if (faceMatchStatus === 'NO MATCH' || faceMatchStatus === 'NO_MATCH') reasons.push('the live face does not match the document photo');
+  if (!livenessPassed) reasons.push('liveness check did not pass');
+  if (antiSpoofFailed) reasons.push('anti-spoofing check raised a warning');
+  if (!ocrCompleted || ocrConfidence < 0.5) reasons.push('document text could not be read with confidence');
+  if (govUnavailable) reasons.push('government identity verification could not be completed');
 
   let riskLevel: RiskLevel;
   let riskReason: string;
 
-  if (govUnavailable && livenessPassed && ocrCompleted && forensicPassed) {
-    riskLevel = 'REVIEW';
-    riskReason =
-      'Document screened — identity NOT government verified. Government verification could not be completed.';
+  // Real, document-level red flags (tampering, identity mismatch, face
+  // mismatch, a high aggregate score) always take priority over the
+  // "everything's fine except government verification" message — a missing
+  // government check should never mask actual evidence of fraud.
+  if (identityMismatch || forensicFlagged || faceMatchStatus === 'NO MATCH' || faceMatchStatus === 'NO_MATCH' || riskScore >= 60) {
+    riskLevel = 'HIGH RISK';
+    riskReason = `Significant verification failures detected: ${reasons.join('; ')}.`;
   } else if (govConnected && livenessPassed && ocrCompleted && forensicPassed && faceMatchStatus === 'MATCH') {
     riskLevel = 'CLEAR';
     riskReason = 'All verification layers passed including government verification.';
-  } else if (identityStatus === 'MISMATCH' || riskScore >= 60) {
-    riskLevel = 'HIGH RISK';
-    riskReason = 'Significant verification failures detected across multiple layers.';
+  } else if (forensicReview || riskScore >= 30) {
+    riskLevel = 'REVIEW';
+    riskReason = `Manual review recommended: ${reasons.join('; ')}.`;
+  } else if (govUnavailable && livenessPassed && ocrCompleted && forensicPassed) {
+    riskLevel = 'REVIEW';
+    riskReason = 'Document screened — identity NOT government verified. Government verification could not be completed.';
   } else if (govUnavailable) {
     riskLevel = 'UNVERIFIED';
     riskReason = 'Government identity verification could not be completed.';
-  } else if (riskScore >= 30) {
-    riskLevel = 'REVIEW';
-    riskReason = 'Some verification layers require manual review.';
   } else {
     riskLevel = 'REVIEW';
     riskReason = 'Verification incomplete — manual review recommended.';
@@ -87,6 +119,8 @@ export function evaluateRisk(
       liveness_passed: livenessPassed,
       ocr_confidence: ocrConfidence,
       forensic_passed: forensicPassed,
+      forensic_penalty: forensicPenalty,
+      tampering_probability: tamperingProbability,
       face_match: faceMatchStatus,
       government_connected: govConnected,
       identity_status: identityStatus,
