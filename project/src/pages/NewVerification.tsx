@@ -1,3 +1,4 @@
+
 import { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -192,7 +193,7 @@ export default function NewVerification() {
         const matchResult = await compareFaces(docImage, faceImage);
         biometricResult = await api.saveBiometricResult(caseRecord.id, {
           match_status: matchResult.status,
-          similarity_score: matchResult.similarity,
+          similarity_score: matchResult.similarity / 100,
           live_face_image: faceImage,
           reference_face_image: matchResult.referenceFaceImage,
           details: matchResult.details,
@@ -504,3 +505,4 @@ export default function NewVerification() {
     </div>
   );
 }
+
