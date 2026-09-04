@@ -60,6 +60,7 @@ export default function CameraCapture({ onCapture, capturedImage, onRetake }: Ca
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number>(0);
   const modelReadyRef = useRef<boolean>(false);
+  const readyStreakRef = useRef(0);
 
   const [cameraStatus, setCameraStatus] = useState<'idle' | 'requesting' | 'live' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -77,6 +78,7 @@ export default function CameraCapture({ onCapture, capturedImage, onRetake }: Ca
       streamRef.current = null;
     }
     if (videoRef.current) videoRef.current.srcObject = null;
+    readyStreakRef.current = 0;
     setCameraStatus('idle');
     setFaceState(defaultFaceState);
     setDetectedBox(null);
@@ -159,11 +161,13 @@ export default function CameraCapture({ onCapture, capturedImage, onRetake }: Ca
         const avgBright = totalBright / (pixels.length / 4);
         const avgVar = totalVar / (pixels.length / 4);
         lighting = avgBright < 50 ? 'poor' : avgBright > 230 ? 'too_bright' : 'good';
-        blur = avgVar < 8 ? 'blurry' : 'clear';
+        blur = avgVar < 5 ? 'blurry' : 'clear';
       }
     }
 
-    const ready = faceAligned && lighting === 'good' && blur === 'clear';
+    const rawReady = faceAligned && lighting === 'good' && blur === 'clear';
+    readyStreakRef.current = rawReady ? readyStreakRef.current + 1 : 0;
+    const ready = readyStreakRef.current >= 8;
 
     setFaceState({
       faceDetected,
@@ -211,8 +215,9 @@ export default function CameraCapture({ onCapture, capturedImage, onRetake }: Ca
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: 'user',
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
+          width: { ideal: 1280, min: 640 },
+          height: { ideal: 720, min: 480 },
+          aspectRatio: { ideal: 4 / 3 },
         },
         audio: false,
       });
