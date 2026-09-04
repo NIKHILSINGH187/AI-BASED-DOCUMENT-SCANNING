@@ -85,7 +85,7 @@ async function cropFace(
   image: HTMLImageElement,
   box: { x: number; y: number; width: number; height: number },
 ): Promise<string> {
-  const padding = 0.35;
+  const padding = 0.6;
   const padX = box.width * padding;
   const padY = box.height * padding;
   const x = Math.max(0, box.x - padX);
@@ -93,13 +93,29 @@ async function cropFace(
   const w = Math.min(image.naturalWidth - x, box.width + padX * 2);
   const h = Math.min(image.naturalHeight - y, box.height + padY * 2);
 
+  const side = Math.max(w, h);
+  const MIN_OUTPUT = 320;
+  const outputSize = Math.max(side, MIN_OUTPUT);
+
   const canvas = document.createElement('canvas');
-  canvas.width = w;
-  canvas.height = h;
+  canvas.width = outputSize;
+  canvas.height = outputSize;
   const ctx = canvas.getContext('2d');
   if (!ctx) return image.src;
-  ctx.drawImage(image, x, y, w, h, 0, 0, w, h);
-  return canvas.toDataURL('image/jpeg', 0.85);
+
+  ctx.fillStyle = '#808080';
+  ctx.fillRect(0, 0, outputSize, outputSize);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+
+  const scale = outputSize / side;
+  const destW = w * scale;
+  const destH = h * scale;
+  const destX = (outputSize - destW) / 2;
+  const destY = (outputSize - destH) / 2;
+
+  ctx.drawImage(image, x, y, w, h, destX, destY, destW, destH);
+  return canvas.toDataURL('image/jpeg', 0.9);
 }
 
 export async function compareFaces(
@@ -152,12 +168,17 @@ export async function compareFaces(
     }
 
     if (!docLandmarks || !liveLandmarks) {
+      const failedSide = !docLandmarks && !liveLandmarks
+        ? 'both the document and live photos'
+        : !docLandmarks
+          ? 'the document photo'
+          : 'the live photo';
       return {
         status: 'INCONCLUSIVE',
         similarity: 0,
         referenceFaceImage,
         details: {
-          note: 'Facial landmarks could not be extracted from one or both images.',
+          note: `Facial landmarks could not be extracted from ${failedSide}.`,
           document_face_detected: true,
           document_landmarks_detected: !!docLandmarks,
           live_landmarks_detected: !!liveLandmarks,
