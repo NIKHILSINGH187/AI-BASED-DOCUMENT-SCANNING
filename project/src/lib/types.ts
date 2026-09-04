@@ -18,7 +18,7 @@ export type MatchStatus = 'MATCH' | 'NO MATCH' | 'INCONCLUSIVE' | 'SERVICE UNAVA
 
 export type LivenessStatus = 'PASSED' | 'FAILED' | 'PENDING' | 'SERVICE UNAVAILABLE';
 
-export type ForensicStatus = 'PASSED' | 'FLAGGED' | 'PENDING' | 'MODEL_NOT_CONNECTED';
+export type ForensicStatus = 'PASSED' | 'REVIEW' | 'FLAGGED' | 'PENDING' | 'MODEL_NOT_CONNECTED';
 
 export type OcrStatus = 'COMPLETED' | 'FAILED' | 'PENDING';
 
