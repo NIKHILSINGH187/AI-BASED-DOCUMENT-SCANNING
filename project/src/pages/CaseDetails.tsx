@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -194,6 +195,11 @@ export default function CaseDetails() {
                   </div>
                 )}
               </div>
+              {biometric.details && typeof biometric.details === 'object' && 'note' in biometric.details && (
+                <p className="mt-2 rounded-lg border border-slate-800 bg-slate-950/60 p-3 text-xs text-slate-400">
+                  {String((biometric.details as Record<string, unknown>).note)}
+                </p>
+              )}
             </div>
           ) : <p className="mt-3 text-sm text-slate-500">Biometric not performed</p>}
         </div>
@@ -388,3 +394,4 @@ function KV({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
