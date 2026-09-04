@@ -21,36 +21,44 @@ const LEFT_EYE_OUTER = 33;
 const LEFT_EYE_INNER = 133;
 const RIGHT_EYE_OUTER = 263;
 const RIGHT_EYE_INNER = 362;
-const NOSE_TIP = 1;
-const MOUTH_LEFT = 61;
-const MOUTH_RIGHT = 291;
-const CHIN = 152;
-const FOREHEAD = 10;
 
+// Expanded, more discriminative landmark set spanning eyes, eyebrows, nose,
+// mouth, jawline/face-contour and cheekbones (indices from MediaPipe's
+// 468-point Face Mesh). Using only ~9 points around the eyes/nose/mouth/chin
+// is not discriminative enough — most frontal adult faces share very similar
+// normalized proportions there, so unrelated people can score deceptively
+// high. Spreading points across the whole face (especially the jaw/cheek
+// contour, which varies a lot person-to-person) makes the signature far more
+// person-specific.
 const SIGNATURE_POINTS = [
-  LEFT_EYE_OUTER,
-  LEFT_EYE_INNER,
-  RIGHT_EYE_OUTER,
-  RIGHT_EYE_INNER,
-  NOSE_TIP,
-  MOUTH_LEFT,
-  MOUTH_RIGHT,
-  CHIN,
-  FOREHEAD,
+  // Eyes (outer/inner corners + top/bottom lids)
+  33, 133, 159, 145, 263, 362, 386, 374,
+  // Eyebrows
+  70, 63, 105, 66, 107, 336, 296, 334, 293, 300,
+  // Nose (bridge, tip, base, nostrils)
+  168, 6, 197, 195, 5, 4, 1, 49, 279,
+  // Mouth (corners + outer lip contour)
+  61, 291, 0, 17, 37, 267, 84, 314,
+  // Jawline / face contour (varies a lot between individuals)
+  234, 454, 172, 397, 136, 365, 150, 379, 149, 378, 176, 400, 152,
+  // Cheekbones / forehead
+  50, 280, 10,
 ];
 
-function dist(a: { x: number; y: number }, b: { x: number; y: number }): number {
-  return Math.hypot(a.x - b.x, a.y - b.y);
+function dist(a: { x: number; y: number; z: number }, b: { x: number; y: number; z: number }): number {
+  return Math.hypot(a.x - b.x, a.y - b.y, (a.z - b.z) * 0.5);
 }
 
 function computeSignature(landmarks: { x: number; y: number; z: number }[]): number[] {
   const leftEyeCenter = {
     x: (landmarks[LEFT_EYE_OUTER].x + landmarks[LEFT_EYE_INNER].x) / 2,
     y: (landmarks[LEFT_EYE_OUTER].y + landmarks[LEFT_EYE_INNER].y) / 2,
+    z: (landmarks[LEFT_EYE_OUTER].z + landmarks[LEFT_EYE_INNER].z) / 2,
   };
   const rightEyeCenter = {
     x: (landmarks[RIGHT_EYE_OUTER].x + landmarks[RIGHT_EYE_INNER].x) / 2,
     y: (landmarks[RIGHT_EYE_OUTER].y + landmarks[RIGHT_EYE_INNER].y) / 2,
+    z: (landmarks[RIGHT_EYE_OUTER].z + landmarks[RIGHT_EYE_INNER].z) / 2,
   };
   const interocular = dist(leftEyeCenter, rightEyeCenter) || 1;
 
@@ -190,8 +198,12 @@ export async function compareFaces(
     const liveSig = computeSignature(liveLandmarks.landmarks);
     const similarity = similarityFromSignatures(docSig, liveSig);
 
+    // With the richer ~40-point signature above, genuinely different faces
+    // separate out much more clearly than they did with the old 9-point
+    // version — so the MATCH bar is raised and the INCONCLUSIVE band is
+    // widened to avoid confidently calling a MATCH on a borderline case.
     const status: FaceMatchResult['status'] =
-      similarity >= 75 ? 'MATCH' : similarity <= 45 ? 'NO_MATCH' : 'INCONCLUSIVE';
+      similarity >= 85 ? 'MATCH' : similarity <= 55 ? 'NO_MATCH' : 'INCONCLUSIVE';
 
     return {
       status,
