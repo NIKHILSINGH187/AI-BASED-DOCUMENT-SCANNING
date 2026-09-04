@@ -1,3 +1,4 @@
+
 import Tesseract from 'tesseract.js';
 
 export interface OcrExtractedData {
@@ -20,6 +21,46 @@ function findPattern(text: string, patterns: RegExp[]): string | null {
   return null;
 }
 
+const NAME_LINE_DENYLIST = [
+  'GOVERNMENT', 'INDIA', 'AADHAAR', 'AADHAR', 'UNIQUE', 'IDENTIFICATION', 'AUTHORITY',
+  'MALE', 'FEMALE', 'OTHER', 'DOB', 'DATE', 'BIRTH', 'ADDRESS', 'DOWNLOAD', 'ONLINE',
+  'AUTHENTICATION', 'SCANNING', 'PASSPORT', 'PERMANENT', 'ACCOUNT', 'ELECTION', 'VOTER',
+  'LICENCE', 'LICENSE', 'DRIVING', 'INCOME', 'TAX', 'ISSUE', 'ISSUED', 'VALID', 'SIGNATURE',
+  'REPUBLIC', 'DEPARTMENT', 'TRANSPORT', 'CARD', 'PROOF', 'CITIZENSHIP', 'VID', 'UIDAI',
+  'HELP', 'WWW', 'GOV', 'PIN', 'STATE', 'DISTRICT', 'MOBILE', 'PHONE', 'EMAIL',
+];
+
+function guessNameFromLines(rawText: string): string | null {
+  const lines = rawText
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+
+  for (const line of lines) {
+    if (/[0-9]/.test(line)) continue;
+    if (!/^[A-Za-z][A-Za-z.\s]{2,39}$/.test(line)) continue;
+
+    const upper = line.toUpperCase();
+    if (NAME_LINE_DENYLIST.some((word) => upper.includes(word))) continue;
+
+    const words = line.split(/\s+/).filter(Boolean);
+    if (words.length < 1 || words.length > 4) continue;
+    if (words.some((w) => w.length < 2)) continue;
+
+    const looksTitleOrUpperCase = words.every(
+      (w) => /^[A-Z][a-z]*$/.test(w) || /^[A-Z]+$/.test(w),
+    );
+    if (!looksTitleOrUpperCase) continue;
+
+    return line
+      .split(/\s+/)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ');
+  }
+
+  return null;
+}
+
 export async function runOcr(imageData: string): Promise<OcrExtractedData> {
   const result = await Tesseract.recognize(imageData, 'eng', {
     logger: () => {},
@@ -34,7 +75,7 @@ export async function runOcr(imageData: string): Promise<OcrExtractedData> {
     /(?:NAME|नाम)\s*[:\-]?\s*([A-Z][A-Z\s]{2,40})/i,
     /(?:Name)\s*[:\-]?\s*([A-Z][a-zA-Z\s]{2,40})/,
   ];
-  const extracted_name = findPattern(text, namePatterns);
+  const extracted_name = findPattern(text, namePatterns) || guessNameFromLines(text);
 
   const docNumberPatterns = [
     /(?:AADHAAR|AADHAR|UID)\s*(?:NO|NUMBER|NUM)?\s*[:\-]?\s*([0-9]{4}\s?[0-9]{4}\s?[0-9]{4})/i,
