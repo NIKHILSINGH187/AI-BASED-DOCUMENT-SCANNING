@@ -1,4 +1,3 @@
-
 import Tesseract from 'tesseract.js';
 
 export interface OcrExtractedData {
@@ -36,6 +35,8 @@ function guessNameFromLines(rawText: string): string | null {
     .map((l) => l.trim())
     .filter((l) => l.length > 0);
 
+  const candidates: { line: string; score: number }[] = [];
+
   for (const line of lines) {
     if (/[0-9]/.test(line)) continue;
     if (!/^[A-Za-z][A-Za-z.\s]{2,39}$/.test(line)) continue;
@@ -45,6 +46,12 @@ function guessNameFromLines(rawText: string): string | null {
 
     const words = line.split(/\s+/).filter(Boolean);
     if (words.length < 1 || words.length > 4) continue;
+
+    // Reject lines made up only of very short fragments (e.g. "Ee Sa") —
+    // these are almost always OCR noise from misread non-English text
+    // (logos, Hindi script, watermarks) rather than a real name. A real
+    // name typically has at least one word of 3+ letters.
+    if (words.every((w) => w.length < 3)) continue;
     if (words.some((w) => w.length < 2)) continue;
 
     const looksTitleOrUpperCase = words.every(
@@ -52,17 +59,32 @@ function guessNameFromLines(rawText: string): string | null {
     );
     if (!looksTitleOrUpperCase) continue;
 
-    return line
+    const formatted = line
       .split(/\s+/)
       .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
       .join(' ');
+
+    // Score candidates instead of taking the first match — longer, more
+    // "name-shaped" lines (multiple words, longer overall) are far more
+    // likely to be the real printed name than a short garbled fragment
+    // that happens to appear earlier in the reading order.
+    const totalLetters = words.join('').length;
+    const score = totalLetters + words.length * 2;
+    candidates.push({ line: formatted, score });
   }
 
-  return null;
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) => b.score - a.score);
+  return candidates[0].line;
 }
 
 export async function runOcr(imageData: string): Promise<OcrExtractedData> {
-  const result = await Tesseract.recognize(imageData, 'eng', {
+  // Recognize Hindi alongside English: government IDs mix Devanagari and
+  // Latin script, and running English-only OCR on Hindi text produces
+  // garbled fake "English" fragments that can be mistaken for a name.
+  // Recognizing Hindi properly lets that text be identified (and ignored)
+  // as Hindi instead of leaking through as noise.
+  const result = await Tesseract.recognize(imageData, 'eng+hin', {
     logger: () => {},
   });
 
