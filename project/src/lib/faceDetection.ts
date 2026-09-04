@@ -2,6 +2,7 @@
 import { FaceDetector, FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 
 let faceDetector: FaceDetector | null = null;
+let imageFaceDetector: FaceDetector | null = null;
 let faceLandmarker: FaceLandmarker | null = null;
 let initPromise: Promise<void> | null = null;
 
@@ -19,6 +20,17 @@ export async function initFaceDetection(): Promise<void> {
         delegate: 'GPU',
       },
       runningMode: 'VIDEO',
+      minDetectionConfidence: 0.5,
+    });
+
+    imageFaceDetector = await FaceDetector.createFromOptions(fileset, {
+      baseOptions: {
+        modelAssetPath:
+          'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_full_range/float16/1/blaze_face_full_range.tflite',
+        delegate: 'GPU',
+      },
+      runningMode: 'VIDEO',
+      minDetectionConfidence: 0.3,
     });
 
     faceLandmarker = await FaceLandmarker.createFromOptions(fileset, {
@@ -29,9 +41,9 @@ export async function initFaceDetection(): Promise<void> {
       },
       runningMode: 'VIDEO',
       numFaces: 1,
-      minFaceDetectionConfidence: 0.5,
-      minFacePresenceConfidence: 0.5,
-      minTrackingConfidence: 0.5,
+      minFaceDetectionConfidence: 0.3,
+      minFacePresenceConfidence: 0.3,
+      minTrackingConfidence: 0.3,
     });
   })();
   return initPromise;
@@ -79,34 +91,37 @@ export function detectFaces(video: HTMLVideoElement, timestampMs: number): Detec
 }
 
 export function detectFacesInImage(image: HTMLImageElement, timestampMs: number): DetectedFace {
-  if (!faceDetector) {
-    return { count: 0, boundingBox: null, faceWidth: 0, faceHeight: 0, centerX: 0, centerY: 0, sizeRatio: 0 };
-  }
-  const result = faceDetector.detectForVideo(image, timestampMs);
-  const detections = result.detections || [];
-  if (detections.length === 0) {
-    return { count: 0, boundingBox: null, faceWidth: 0, faceHeight: 0, centerX: 0, centerY: 0, sizeRatio: 0 };
-  }
-  const d = detections[0];
-  const bb = d.boundingBox;
-  if (!bb) {
-    return { count: detections.length, boundingBox: null, faceWidth: 0, faceHeight: 0, centerX: 0, centerY: 0, sizeRatio: 0 };
-  }
-  const box = {
-    x: bb.originX,
-    y: bb.originY,
-    width: bb.width,
-    height: bb.height,
+  const empty: DetectedFace = { count: 0, boundingBox: null, faceWidth: 0, faceHeight: 0, centerX: 0, centerY: 0, sizeRatio: 0 };
+
+  const runWith = (detector: FaceDetector, ts: number): DetectedFace => {
+    const result = detector.detectForVideo(image, ts);
+    const detections = result.detections || [];
+    if (detections.length === 0) return empty;
+    const d = detections[0];
+    const bb = d.boundingBox;
+    if (!bb) return { ...empty, count: detections.length };
+    return {
+      count: detections.length,
+      boundingBox: { x: bb.originX, y: bb.originY, width: bb.width, height: bb.height },
+      faceWidth: bb.width,
+      faceHeight: bb.height,
+      centerX: bb.originX + bb.width / 2,
+      centerY: bb.originY + bb.height / 2,
+      sizeRatio: (bb.width * bb.height) / (image.naturalWidth * image.naturalHeight),
+    };
   };
-  return {
-    count: detections.length,
-    boundingBox: box,
-    faceWidth: bb.width,
-    faceHeight: bb.height,
-    centerX: bb.originX + bb.width / 2,
-    centerY: bb.originY + bb.height / 2,
-    sizeRatio: (bb.width * bb.height) / (image.naturalWidth * image.naturalHeight),
-  };
+
+  if (faceDetector) {
+    const shortRangeResult = runWith(faceDetector, timestampMs);
+    if (shortRangeResult.count > 0) return shortRangeResult;
+  }
+
+  if (imageFaceDetector) {
+    const fullRangeResult = runWith(imageFaceDetector, timestampMs + 1);
+    if (fullRangeResult.count > 0) return fullRangeResult;
+  }
+
+  return empty;
 }
 
 export interface LandmarkData {
@@ -138,5 +153,5 @@ export function detectLandmarksInImage(image: HTMLImageElement, timestampMs: num
 }
 
 export function isFaceDetectionReady(): boolean {
-  return faceDetector !== null && faceLandmarker !== null;
+  return faceDetector !== null && imageFaceDetector !== null && faceLandmarker !== null;
 }
