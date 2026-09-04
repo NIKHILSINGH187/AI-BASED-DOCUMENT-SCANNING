@@ -1,3 +1,4 @@
+
 export interface ForensicAnalysis {
   image_quality: number;
   compression_anomaly: boolean;
@@ -66,7 +67,7 @@ export async function analyzeForensics(imageData: string): Promise<ForensicAnaly
 
   const pixel_inconsistency = avgVariance < 5 || edgeCount < (pixels.length / 4) * 0.01;
 
-  const elaCanvas = performELA(ctx, canvas.width, canvas.height);
+  const elaCanvas = await performELA(ctx, canvas.width, canvas.height);
   const elaScore = elaCanvas.score;
   const elaResult = {
     method: 'Error Level Analysis (JPEG re-compression differential)',
@@ -123,28 +124,50 @@ export async function analyzeForensics(imageData: string): Promise<ForensicAnaly
 
 function detectCopyPaste(pixels: Uint8ClampedArray, width: number, height: number): number {
   const blockSize = 16;
-  const blocks: number[][] = [];
+  interface Block { avg: number; variance: number }
+  const blocks: Block[] = [];
   for (let y = 0; y < height - blockSize; y += blockSize) {
     for (let x = 0; x < width - blockSize; x += blockSize) {
       let sum = 0;
+      const vals: number[] = [];
       for (let by = 0; by < blockSize; by++) {
         for (let bx = 0; bx < blockSize; bx++) {
           const idx = ((y + by) * width + (x + bx)) * 4;
-          sum += pixels[idx] + pixels[idx + 1] + pixels[idx + 2];
+          const v = (pixels[idx] + pixels[idx + 1] + pixels[idx + 2]) / 3;
+          sum += v;
+          vals.push(v);
         }
       }
-      blocks.push([sum / (blockSize * blockSize * 3)]);
+      const avg = sum / vals.length;
+      const variance = vals.reduce((a, b) => a + (b - avg) ** 2, 0) / vals.length;
+      blocks.push({ avg, variance });
     }
   }
 
+  // Flat/near-uniform blocks (plain backgrounds, white space, solid fills)
+  // are near-identical to each other in almost every real photo and are
+  // not evidence of copy-move tampering — exclude them so they don't
+  // dominate the comparison.
+  const MIN_BLOCK_VARIANCE = 25;
+  const texturedBlocks = blocks.filter((b) => b.variance > MIN_BLOCK_VARIANCE);
+  if (texturedBlocks.length < 2) return 0;
+
+  let strongMatchCount = 0;
   let maxSimilarity = 0;
-  for (let i = 0; i < blocks.length; i++) {
-    for (let j = i + 1; j < blocks.length; j++) {
-      const diff = Math.abs(blocks[i][0] - blocks[j][0]);
+  const SIMILARITY_THRESHOLD = 0.9;
+  for (let i = 0; i < texturedBlocks.length; i++) {
+    for (let j = i + 1; j < texturedBlocks.length; j++) {
+      const diff = Math.abs(texturedBlocks[i].avg - texturedBlocks[j].avg);
       const similarity = 1 - diff / 255;
       if (similarity > maxSimilarity) maxSimilarity = similarity;
+      if (similarity > SIMILARITY_THRESHOLD) strongMatchCount++;
     }
   }
+
+  // Require more than a single coincidental match before treating this as
+  // a real duplicated-region signal — one matching pair among hundreds of
+  // blocks happens by chance in ordinary photos.
+  if (strongMatchCount < 3) return Math.min(maxSimilarity, 0.7);
   return maxSimilarity;
 }
 
@@ -169,31 +192,92 @@ function detectCompressionAnomaly(
   return Math.min(1, avgDiff / 40);
 }
 
-function performELA(
+async function performELA(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
-): { score: number; regions: unknown[] } {
+): Promise<{ score: number; regions: unknown[] }> {
   const originalData = ctx.getImageData(0, 0, width, height);
-  const tempCanvas = document.createElement('canvas');
-  tempCanvas.width = width;
-  tempCanvas.height = height;
-  const tempCtx = tempCanvas.getContext('2d');
-  if (!tempCtx) return { score: 0, regions: [] };
 
-  tempCtx.putImageData(originalData, 0, 0);
-  const dataUrl = tempCanvas.toDataURL('image/jpeg', 0.75);
-  const img = new Image();
-  img.src = dataUrl;
+  // Actually perform Error Level Analysis: re-compress the image at a fixed
+  // JPEG quality, reload it, and diff it pixel-by-pixel against the
+  // original. A region pasted in from a different source usually has a
+  // different compression history, so it shows a different re-compression
+  // error than the rest of the document — that's the real ELA signal
+  // (this previously just returned a hardcoded 0.15 and never looked at
+  // the image at all).
+  const sourceCanvas = document.createElement('canvas');
+  sourceCanvas.width = width;
+  sourceCanvas.height = height;
+  const sourceCtx = sourceCanvas.getContext('2d');
+  if (!sourceCtx) return { score: 0, regions: [] };
+  sourceCtx.putImageData(originalData, 0, 0);
+
+  const recompressedDataUrl = sourceCanvas.toDataURL('image/jpeg', 0.75);
+  const recompressedImg = new Image();
+  await new Promise<void>((resolve, reject) => {
+    recompressedImg.onload = () => resolve();
+    recompressedImg.onerror = () => reject(new Error('ELA recompression failed'));
+    recompressedImg.src = recompressedDataUrl;
+  });
+
+  const diffCanvas = document.createElement('canvas');
+  diffCanvas.width = width;
+  diffCanvas.height = height;
+  const diffCtx = diffCanvas.getContext('2d');
+  if (!diffCtx) return { score: 0, regions: [] };
+  diffCtx.drawImage(recompressedImg, 0, 0, width, height);
+  const recompressedData = diffCtx.getImageData(0, 0, width, height).data;
+  const original = originalData.data;
+
+  const blockSize = 32;
+  const blockDiffs: { x: number; y: number; diff: number }[] = [];
+  let totalDiff = 0;
+
+  for (let by = 0; by < height; by += blockSize) {
+    for (let bx = 0; bx < width; bx += blockSize) {
+      let blockTotal = 0;
+      let blockCount = 0;
+      for (let y = by; y < Math.min(by + blockSize, height); y++) {
+        for (let x = bx; x < Math.min(bx + blockSize, width); x++) {
+          const idx = (y * width + x) * 4;
+          const d =
+            Math.abs(original[idx] - recompressedData[idx]) +
+            Math.abs(original[idx + 1] - recompressedData[idx + 1]) +
+            Math.abs(original[idx + 2] - recompressedData[idx + 2]);
+          blockTotal += d;
+          blockCount++;
+          totalDiff += d;
+        }
+      }
+      const blockAvg = blockTotal / (blockCount || 1);
+      blockDiffs.push({ x: bx, y: by, diff: blockAvg });
+    }
+  }
+
+  const avgDiff = totalDiff / (width * height);
+  const meanBlockDiff = blockDiffs.reduce((a, b) => a + b.diff, 0) / (blockDiffs.length || 1);
+  const stdBlockDiff = Math.sqrt(
+    blockDiffs.reduce((a, b) => a + (b.diff - meanBlockDiff) ** 2, 0) / (blockDiffs.length || 1),
+  );
+
+  // Blocks whose recompression error stands well above the document's own
+  // average are the classic ELA tell for a region edited/pasted in
+  // separately from the rest of the image.
+  const outlierThreshold = meanBlockDiff + stdBlockDiff * 2;
+  const outlierBlocks = blockDiffs.filter((b) => b.diff > outlierThreshold && b.diff > 8);
+
+  const score = Math.min(
+    1,
+    avgDiff / 20 + (outlierBlocks.length / Math.max(1, blockDiffs.length)) * 2,
+  );
 
   return {
-    score: 0.15,
-    regions: [
-      {
-        region: 'full_document',
-        ela_difference: 'low',
-        note: 'ELA baseline computed from JPEG re-compression differential',
-      },
-    ],
+    score,
+    regions: outlierBlocks.slice(0, 10).map((b) => ({
+      region: `x:${b.x},y:${b.y}`,
+      ela_difference: b.diff > outlierThreshold * 1.5 ? 'high' : 'moderate',
+      note: 'Recompression error in this block is significantly higher than the document average',
+    })),
   };
 }
