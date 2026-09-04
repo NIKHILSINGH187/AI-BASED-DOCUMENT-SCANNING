@@ -1,3 +1,4 @@
+
 import { FaceDetector, FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 
 let faceDetector: FaceDetector | null = null;
@@ -77,6 +78,37 @@ export function detectFaces(video: HTMLVideoElement, timestampMs: number): Detec
   };
 }
 
+export function detectFacesInImage(image: HTMLImageElement, timestampMs: number): DetectedFace {
+  if (!faceDetector) {
+    return { count: 0, boundingBox: null, faceWidth: 0, faceHeight: 0, centerX: 0, centerY: 0, sizeRatio: 0 };
+  }
+  const result = faceDetector.detectForVideo(image, timestampMs);
+  const detections = result.detections || [];
+  if (detections.length === 0) {
+    return { count: 0, boundingBox: null, faceWidth: 0, faceHeight: 0, centerX: 0, centerY: 0, sizeRatio: 0 };
+  }
+  const d = detections[0];
+  const bb = d.boundingBox;
+  if (!bb) {
+    return { count: detections.length, boundingBox: null, faceWidth: 0, faceHeight: 0, centerX: 0, centerY: 0, sizeRatio: 0 };
+  }
+  const box = {
+    x: bb.originX,
+    y: bb.originY,
+    width: bb.width,
+    height: bb.height,
+  };
+  return {
+    count: detections.length,
+    boundingBox: box,
+    faceWidth: bb.width,
+    faceHeight: bb.height,
+    centerX: bb.originX + bb.width / 2,
+    centerY: bb.originY + bb.height / 2,
+    sizeRatio: (bb.width * bb.height) / (image.naturalWidth * image.naturalHeight),
+  };
+}
+
 export interface LandmarkData {
   landmarks: { x: number; y: number; z: number }[];
   blendshapes: { categoryName: string; score: number }[];
@@ -86,6 +118,17 @@ export interface LandmarkData {
 export function detectLandmarks(video: HTMLVideoElement, timestampMs: number): LandmarkData | null {
   if (!faceLandmarker) return null;
   const result = faceLandmarker.detectForVideo(video, timestampMs);
+  if (!result.faceLandmarks || result.faceLandmarks.length === 0) return null;
+  return {
+    landmarks: result.faceLandmarks[0],
+    blendshapes: result.faceBlendshapes?.[0]?.categories || [],
+    transformationMatrices: result.facialTransformationMatrixes || [],
+  };
+}
+
+export function detectLandmarksInImage(image: HTMLImageElement, timestampMs: number): LandmarkData | null {
+  if (!faceLandmarker) return null;
+  const result = faceLandmarker.detectForVideo(image, timestampMs);
   if (!result.faceLandmarks || result.faceLandmarks.length === 0) return null;
   return {
     landmarks: result.faceLandmarks[0],
