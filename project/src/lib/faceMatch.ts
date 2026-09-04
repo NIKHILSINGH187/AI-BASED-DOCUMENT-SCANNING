@@ -1,3 +1,4 @@
+
 import { initFaceDetection, detectFacesInImage, detectLandmarksInImage } from './faceDetection';
 
 export interface FaceMatchResult {
@@ -128,13 +129,27 @@ export async function compareFaces(
       };
     }
 
-    const t2 = t1 + 1;
-    const docLandmarks = detectLandmarksInImage(docImg, t2);
-
-    const t3 = t2 + 1;
-    const liveLandmarks = detectLandmarksInImage(liveImg, t3);
-
     const referenceFaceImage = await cropFace(docImg, docFaceDetection.boundingBox);
+    const docCropImg = await loadImage(referenceFaceImage);
+
+    const t2 = t1 + 1;
+    let docLandmarks = detectLandmarksInImage(docCropImg, t2);
+    const t2b = t2 + 1;
+    if (!docLandmarks) docLandmarks = detectLandmarksInImage(docImg, t2b);
+
+    const t3 = t2b + 1;
+    const liveFaceDetection = detectFacesInImage(liveImg, t3);
+    let liveLandmarkSource = liveImg;
+    let t4 = t3 + 1;
+    if (liveFaceDetection.count > 0 && liveFaceDetection.boundingBox) {
+      const liveCrop = await cropFace(liveImg, liveFaceDetection.boundingBox);
+      liveLandmarkSource = await loadImage(liveCrop);
+    }
+    let liveLandmarks = detectLandmarksInImage(liveLandmarkSource, t4);
+    if (!liveLandmarks && liveLandmarkSource !== liveImg) {
+      t4 += 1;
+      liveLandmarks = detectLandmarksInImage(liveImg, t4);
+    }
 
     if (!docLandmarks || !liveLandmarks) {
       return {
