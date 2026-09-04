@@ -1,3 +1,4 @@
+
 import { Gauge } from 'lucide-react';
 import type { RiskLevel } from '@/lib/types';
 
@@ -11,7 +12,7 @@ const levelConfig: Record<RiskLevel, { color: string; bg: string; label: string 
   CLEAR: { color: 'text-emerald-400', bg: 'from-emerald-500/20 to-emerald-500/5', label: 'CLEAR' },
   REVIEW: { color: 'text-amber-400', bg: 'from-amber-500/20 to-amber-500/5', label: 'REVIEW' },
   'HIGH RISK': { color: 'text-red-400', bg: 'from-red-500/20 to-red-500/5', label: 'HIGH RISK' },
-  UNVERIFIED: { color: 'text-slate-400', bg: 'from-slate-500/20 to-slate-500/5', label: 'UNVERIFIED' },
+  UNVERIFIED: { color: 'text-amber-400', bg: 'from-amber-500/20 to-amber-500/5', label: 'UNVERIFIED' },
 };
 
 export default function RiskGauge({ level, score, reason }: RiskGaugeProps) {
@@ -20,7 +21,7 @@ export default function RiskGauge({ level, score, reason }: RiskGaugeProps) {
   const offset = circumference - (score / 100) * circumference;
 
   const strokeColor =
-    level === 'CLEAR' ? '#10b981' : level === 'REVIEW' ? '#f59e0b' : level === 'HIGH RISK' ? '#ef4444' : '#64748b';
+    level === 'CLEAR' ? '#10b981' : level === 'REVIEW' || level === 'UNVERIFIED' ? '#f59e0b' : level === 'HIGH RISK' ? '#ef4444' : '#64748b';
 
   return (
     <div className={`rounded-2xl border border-slate-800 bg-gradient-to-br ${config.bg} p-6`}>
@@ -61,3 +62,4 @@ export default function RiskGauge({ level, score, reason }: RiskGaugeProps) {
     </div>
   );
 }
+
