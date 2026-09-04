@@ -1,3 +1,4 @@
+
 name: Deploy to GitHub Pages
 
 on:
@@ -35,6 +36,9 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Copy index.html to 404.html
+        run: cp project/dist/index.html project/dist/404.html
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
