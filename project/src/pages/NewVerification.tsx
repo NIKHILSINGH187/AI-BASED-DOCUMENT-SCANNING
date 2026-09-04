@@ -10,6 +10,7 @@ import { runOcr } from '@/lib/ocr';
 import { analyzeForensics } from '@/lib/forensics';
 import { attemptGovernmentVerification } from '@/lib/gov';
 import { computeIdentityBinding } from '@/lib/identityBinding';
+import { compareFaces } from '@/lib/faceMatch';
 import { evaluateRisk } from '@/lib/riskEngine';
 import CameraCapture, { type FaceDetectionState } from '@/components/CameraCapture';
 import LivenessCheck, { type LivenessResultData } from '@/components/LivenessCheck';
@@ -186,20 +187,34 @@ export default function NewVerification() {
       await delay(300);
 
       updateStepStatus('biometric', 'processing');
-      const biometricResult = await api.saveBiometricResult(caseRecord.id, {
-        match_status: 'INCONCLUSIVE',
-        similarity_score: 0,
-        live_face_image: faceImage,
-        reference_face_image: null,
-        details: {
-          note: 'No reference face from government source available. Live face captured and processed.',
-          live_face_captured: true,
-          reference_available: false,
-          face_detected: true,
-          face_count: 1,
-        },
-      });
-      updateStepStatus('biometric', 'completed', 'No reference available — INCONCLUSIVE');
+      let biometricResult;
+      try {
+        const matchResult = await compareFaces(docImage, faceImage);
+        biometricResult = await api.saveBiometricResult(caseRecord.id, {
+          match_status: matchResult.status,
+          similarity_score: matchResult.similarity,
+          live_face_image: faceImage,
+          reference_face_image: matchResult.referenceFaceImage,
+          details: matchResult.details,
+        });
+        updateStepStatus(
+          'biometric',
+          'completed',
+          `${matchResult.status} (${matchResult.similarity}%)`,
+        );
+      } catch (err) {
+        biometricResult = await api.saveBiometricResult(caseRecord.id, {
+          match_status: 'INCONCLUSIVE',
+          similarity_score: 0,
+          live_face_image: faceImage,
+          reference_face_image: null,
+          details: {
+            note: 'Biometric comparison failed due to an internal error.',
+            error: err instanceof Error ? err.message : 'unknown',
+          },
+        });
+        updateStepStatus('biometric', 'failed', 'Comparison failed — INCONCLUSIVE');
+      }
       await delay(300);
 
       updateStepStatus('government', 'processing');
