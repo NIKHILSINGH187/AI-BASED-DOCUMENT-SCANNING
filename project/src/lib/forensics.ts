@@ -89,7 +89,14 @@ export async function analyzeForensics(imageData: string): Promise<ForensicAnaly
 
   const suspicious_regions = elaCanvas.regions;
 
-  const status = tampering_probability > 60 ? 'FLAGGED' : 'PASSED';
+  const anomalyFlagCount =
+    (copy_paste_anomaly ? 1 : 0) + (pixel_inconsistency ? 1 : 0) + (compression_anomaly ? 1 : 0);
+  const status =
+    tampering_probability > 60 || anomalyFlagCount >= 2
+      ? 'FLAGGED'
+      : anomalyFlagCount === 1
+        ? 'REVIEW'
+        : 'PASSED';
 
   return {
     image_quality: Math.round(image_quality * 100) / 100,
