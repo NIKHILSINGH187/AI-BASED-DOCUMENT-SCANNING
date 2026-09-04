@@ -78,13 +78,13 @@ function AppRoutes() {
     </>
   );
 }
-
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/AI-BASED-DOCUMENT-SCANNING">
       <AuthProvider>
         <AppRoutes />
       </AuthProvider>
     </BrowserRouter>
   );
 }
+
