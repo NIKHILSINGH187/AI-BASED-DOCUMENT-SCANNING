@@ -61,7 +61,7 @@ export default function Dashboard() {
               Dashboard
             </span>
           </h1>
-          <p className="mt-1 text-sm text-slate-400">Identity verification overview and analytics</p>
+          <p className="mt-1 text-sm text-slate-400">AI-based fake identity &amp; document screening — border checkpoints, hotel check-in, tenant/landlord verification, bank KYC, delivery partner &amp; staff onboarding, employee checks, or any business, school, college or society</p>
         </div>
         <button
           onClick={() => navigate('/verification/new')}
