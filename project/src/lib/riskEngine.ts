@@ -36,7 +36,12 @@ export function evaluateRisk(
   const faceMatchStatus = biometric?.match_status || 'PENDING';
   const govStatus = government?.status || 'NOT_CONFIGURED';
   const govConnected = govStatus === 'VERIFIED';
-  const govUnavailable = govStatus === 'NOT_CONFIGURED' || govStatus === 'UNAVAILABLE';
+  const govUnavailable =
+    govStatus === 'NOT_CONFIGURED' ||
+    govStatus === 'UNAVAILABLE' ||
+    govStatus === 'SANDBOX_VALID' ||
+    govStatus === 'SANDBOX_INVALID';
+  const govSandboxInvalid = govStatus === 'SANDBOX_INVALID';
   const identityStatus = identityBinding?.identity_status || 'PENDING';
   const identityMismatch = identityStatus === 'MISMATCH';
   const antiSpoof = liveness?.anti_spoof_status || 'MANUAL REVIEW';
@@ -59,6 +64,7 @@ export function evaluateRisk(
   if (faceMatchStatus === 'NO MATCH' || faceMatchStatus === 'NO_MATCH') riskScore += 25;
   if (govUnavailable) riskScore += 10;
   if (identityMismatch) riskScore += 30;
+  if (govSandboxInvalid) riskScore += 20;
   if (antiSpoofFailed) riskScore += 15;
 
   riskScore = Math.min(100, riskScore);
@@ -68,6 +74,7 @@ export function evaluateRisk(
   // only ever mentions government verification.
   const reasons: string[] = [];
   if (identityMismatch) reasons.push('OCR and government/reference data do not match');
+  if (govSandboxInvalid) reasons.push('the document number fails its own official checksum/format — it is not a structurally valid number');
   if (forensicFlagged) reasons.push(`document forensics flagged this document as likely tampered (tampering probability ${Math.round(tamperingProbability)}%)`);
   else if (forensicReview) reasons.push(`document forensics found an anomaly that needs manual review (tampering probability ${Math.round(tamperingProbability)}%)`);
   if (faceMatchStatus === 'NO MATCH' || faceMatchStatus === 'NO_MATCH') reasons.push('the live face does not match the document photo');
@@ -83,7 +90,7 @@ export function evaluateRisk(
   // mismatch, a high aggregate score) always take priority over the
   // "everything's fine except government verification" message — a missing
   // government check should never mask actual evidence of fraud.
-  if (identityMismatch || forensicFlagged || faceMatchStatus === 'NO MATCH' || faceMatchStatus === 'NO_MATCH' || riskScore >= 60) {
+  if (identityMismatch || forensicFlagged || govSandboxInvalid || faceMatchStatus === 'NO MATCH' || faceMatchStatus === 'NO_MATCH' || riskScore >= 60) {
     riskLevel = 'HIGH RISK';
     riskReason = `Significant verification failures detected: ${reasons.join('; ')}.`;
   } else if (govConnected && livenessPassed && ocrCompleted && forensicPassed && faceMatchStatus === 'MATCH') {
