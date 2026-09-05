@@ -1,8 +1,9 @@
 
-import { useState, useRef, useCallback } from 'react';
+
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  FileText, ScanFace, Camera, ShieldCheck, Eye, Fingerprint,
+  FileText, ScanFace, ShieldCheck,
   CheckCircle2, ChevronRight, AlertCircle, Loader2, Info,
 } from 'lucide-react';
 import type { DocumentType, ProcessingStep } from '@/lib/types';
@@ -13,19 +14,26 @@ import { attemptGovernmentVerification } from '@/lib/gov';
 import { computeIdentityBinding } from '@/lib/identityBinding';
 import { compareFaces } from '@/lib/faceMatch';
 import { evaluateRisk } from '@/lib/riskEngine';
-import CameraCapture, { type FaceDetectionState } from '@/components/CameraCapture';
-import LivenessCheck, { type LivenessResultData } from '@/components/LivenessCheck';
 import DocumentUpload from '@/components/DocumentUpload';
 import ConsentModal from '@/components/ConsentModal';
 
-type Step = 'document-type' | 'upload' | 'consent' | 'camera' | 'liveness' | 'processing';
+// This workflow intentionally does NOT use a live webcam capture or a
+// liveness/blink challenge. It is built for cases where an officer/agent is
+// verifying someone using a document photo plus a reference photo that is
+// already on file (HR records, hotel registration, bank KYC records,
+// society/tenant records, delivery-partner onboarding photo, etc.) — not a
+// self-service selfie flow. Face matching still runs (face-api.js), it just
+// compares two existing images instead of requiring a fresh live capture.
+type Step = 'document-type' | 'upload' | 'consent' | 'reference' | 'processing';
 
 const docTypes: { type: DocumentType; icon: typeof FileText; desc: string }[] = [
   { type: 'Aadhaar', icon: FileText, desc: 'UIDAI Aadhaar Card' },
   { type: 'PAN', icon: FileText, desc: 'Income Tax PAN Card' },
   { type: 'Voter ID', icon: FileText, desc: 'Election Commission EPIC' },
-  { type: 'Passport', icon: FileText, desc: 'Indian Passport' },
+  { type: 'Passport', icon: FileText, desc: 'Indian / Foreign Passport' },
+  { type: 'Visa', icon: FileText, desc: 'Visa / Entry Permit' },
   { type: 'Driving Licence', icon: FileText, desc: 'State Transport DL' },
+  { type: 'National ID', icon: FileText, desc: 'Foreign National ID Card' },
   { type: 'Other Government ID', icon: FileText, desc: 'Other official ID' },
 ];
 
@@ -35,16 +43,13 @@ export default function NewVerification() {
   const [docType, setDocType] = useState<DocumentType | null>(null);
   const [docImage, setDocImage] = useState<string | null>(null);
   const [docFile, setDocFile] = useState<File | null>(null);
-  const [faceImage, setFaceImage] = useState<string | null>(null);
-  const [livenessResult, setLivenessResult] = useState<LivenessResultData | null>(null);
+  const [refImage, setRefImage] = useState<string | null>(null);
+  const [refFile, setRefFile] = useState<File | null>(null);
   const [consentOpen, setConsentOpen] = useState(false);
   const [processingSteps, setProcessingSteps] = useState<ProcessingStep[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const liveVideoRef = useRef<HTMLVideoElement>(null);
-  const liveStreamRef = useRef<MediaStream | null>(null);
-
-  const stepOrder: Step[] = ['document-type', 'upload', 'consent', 'camera', 'liveness', 'processing'];
+  const stepOrder: Step[] = ['document-type', 'upload', 'consent', 'reference', 'processing'];
   const currentStepIndex = stepOrder.indexOf(step);
 
   const selectDocType = (type: DocumentType) => {
@@ -62,39 +67,27 @@ export default function NewVerification() {
     setDocFile(null);
   };
 
-  const handleFaceCapture = (imageData: string, _faceState: FaceDetectionState) => {
-    setFaceImage(imageData);
-    setStep('liveness');
+  const handleReferenceSelected = (file: File, imageData: string) => {
+    setRefFile(file);
+    setRefImage(imageData);
   };
 
-  const handleRetake = () => {
-    setFaceImage(null);
-    setLivenessResult(null);
-    setStep('camera');
-  };
-
-  const handleLivenessComplete = async (result: LivenessResultData) => {
-    setLivenessResult(result);
-    if (result.challengePassed) {
-      await runProcessingPipeline(result);
-    }
-  };
-
-  const handleLivenessRetry = () => {
-    setLivenessResult(null);
+  const handleRemoveReference = () => {
+    setRefImage(null);
+    setRefFile(null);
   };
 
   const handleConsentAccept = () => {
     setConsentOpen(false);
-    setStep('camera');
+    setStep('reference');
   };
 
   const handleConsentDecline = () => {
     setConsentOpen(false);
-    setError('Consent is required to proceed with biometric verification.');
+    setError('Consent is required to proceed with identity verification.');
   };
 
-  const proceedToCamera = () => {
+  const proceedToConsent = () => {
     setError(null);
     if (!docImage || !docFile || !docType) return;
     setConsentOpen(true);
@@ -108,16 +101,14 @@ export default function NewVerification() {
 
   const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-  const runProcessingPipeline = async (liveness: LivenessResultData) => {
-    if (!docType || !docImage || !docFile || !faceImage) return;
+  const runProcessingPipeline = async () => {
+    if (!docType || !docImage || !docFile || !refImage) return;
 
     setStep('processing');
 
     const steps: ProcessingStep[] = [
       { id: 'doc_received', label: 'Document received', status: 'pending' },
-      { id: 'camera_init', label: 'Camera initialized', status: 'pending' },
-      { id: 'face_detected', label: 'Face detected', status: 'pending' },
-      { id: 'liveness', label: 'Liveness processing', status: 'pending' },
+      { id: 'reference_received', label: 'Reference photo received', status: 'pending' },
       { id: 'ocr', label: 'OCR processing', status: 'pending' },
       { id: 'forensics', label: 'Forensics processing', status: 'pending' },
       { id: 'biometric', label: 'Biometric matching', status: 'pending' },
@@ -131,24 +122,13 @@ export default function NewVerification() {
       const caseRecord = await api.createCase(docType);
 
       updateStepStatus('doc_received', 'completed');
-      updateStepStatus('camera_init', 'completed');
-      updateStepStatus('face_detected', 'completed');
-      await delay(300);
+      await delay(200);
 
       await api.uploadDocument(caseRecord.id, docType, docFile, docImage);
-      await api.saveFaceCapture(caseRecord.id, faceImage, true, 1);
-      await api.saveConsent(caseRecord.id, 'biometric', 'I consent to the capture and processing of my biometric/identity information for verification.', true);
-
-      const savedLiveness = await api.saveLivenessResult(caseRecord.id, {
-        challenge_type: liveness.details?.challenge as string || 'unknown',
-        challenge_passed: liveness.challengePassed,
-        liveness_score: liveness.livenessScore,
-        anti_spoof_status: liveness.antiSpoofStatus,
-        status: liveness.status,
-        details: liveness.details,
-      });
-      updateStepStatus('liveness', 'completed', `Anti-spoof: ${liveness.antiSpoofStatus}`);
-      await delay(300);
+      await api.saveFaceCapture(caseRecord.id, refImage, true, 1);
+      await api.saveConsent(caseRecord.id, 'biometric', 'I consent to the processing of the document photo and reference photo for identity verification.', true);
+      updateStepStatus('reference_received', 'completed');
+      await delay(200);
 
       updateStepStatus('ocr', 'processing');
       let ocrResult = null;
@@ -190,11 +170,11 @@ export default function NewVerification() {
       updateStepStatus('biometric', 'processing');
       let biometricResult;
       try {
-        const matchResult = await compareFaces(docImage, faceImage);
+        const matchResult = await compareFaces(docImage, refImage);
         biometricResult = await api.saveBiometricResult(caseRecord.id, {
           match_status: matchResult.status,
           similarity_score: matchResult.similarity / 100,
-          live_face_image: faceImage,
+          live_face_image: refImage,
           reference_face_image: matchResult.referenceFaceImage,
           details: matchResult.details,
         });
@@ -207,7 +187,7 @@ export default function NewVerification() {
         biometricResult = await api.saveBiometricResult(caseRecord.id, {
           match_status: 'INCONCLUSIVE',
           similarity_score: 0,
-          live_face_image: faceImage,
+          live_face_image: refImage,
           reference_face_image: null,
           details: {
             note: 'Biometric comparison failed due to an internal error.',
@@ -235,7 +215,7 @@ export default function NewVerification() {
       await delay(300);
 
       updateStepStatus('binding', 'processing');
-      const bindingResult = computeIdentityBinding(ocrResult, govRecord, biometricResult, savedLiveness, forensicResult);
+      const bindingResult = computeIdentityBinding(ocrResult, govRecord, biometricResult, null, forensicResult);
       await api.saveIdentityBinding(caseRecord.id, {
         binding_matrix: bindingResult.binding_matrix,
         identity_status: bindingResult.identity_status,
@@ -245,11 +225,11 @@ export default function NewVerification() {
       await delay(300);
 
       updateStepStatus('risk', 'processing');
-      const riskResult = evaluateRisk(savedLiveness, ocrResult, forensicResult, biometricResult, govRecord, { identity_status: bindingResult.identity_status, binding_matrix: bindingResult.binding_matrix, id: '', case_id: caseRecord.id, created_at: '', details: null });
+      const riskResult = evaluateRisk(null, ocrResult, forensicResult, biometricResult, govRecord, { identity_status: bindingResult.identity_status, binding_matrix: bindingResult.binding_matrix, id: '', case_id: caseRecord.id, created_at: '', details: null });
       await api.saveRiskAssessment(caseRecord.id, riskResult);
 
       await api.saveEvidence(caseRecord.id, 'document', 'Uploaded Document', docImage);
-      await api.saveEvidence(caseRecord.id, 'face_capture', 'Live Face Capture', faceImage);
+      await api.saveEvidence(caseRecord.id, 'face_capture', 'Reference Photo (on file)', refImage);
       if (ocrResult) {
         await api.saveEvidence(caseRecord.id, 'ocr', 'OCR Extracted Text', ocrResult.raw_text || '', { confidence: ocrResult.ocr_confidence });
       }
@@ -257,7 +237,6 @@ export default function NewVerification() {
         await api.saveEvidence(caseRecord.id, 'forensics', 'Forensic Analysis', JSON.stringify(forensicResult.details, null, 2));
       }
       await api.saveEvidence(caseRecord.id, 'government', 'Government Response', JSON.stringify(govResult.details, null, 2));
-      await api.saveEvidence(caseRecord.id, 'liveness', 'Liveness Result', JSON.stringify(liveness.details, null, 2));
 
       updateStepStatus('risk', 'completed', riskResult.risk_level);
 
@@ -276,17 +255,20 @@ export default function NewVerification() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white">New Verification</h1>
-        <p className="mt-1 text-sm text-slate-400">Complete identity and document screening workflow</p>
+        <p className="mt-1 text-sm text-slate-400">
+          Verify a document and photo against a reference photo already on file — border checkpoints,
+          hotel check-in, tenant/landlord verification, bank KYC, delivery partner or domestic staff
+          onboarding, new employee checks, or any business, school, college or society.
+        </p>
       </div>
 
       {/* Progress Steps */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2">
         {[
           { label: 'Document Type', key: 'document-type' },
-          { label: 'Upload', key: 'upload' },
+          { label: 'Upload Document', key: 'upload' },
           { label: 'Consent', key: 'consent' },
-          { label: 'Camera', key: 'camera' },
-          { label: 'Liveness', key: 'liveness' },
+          { label: 'Reference Photo', key: 'reference' },
           { label: 'Processing', key: 'processing' },
         ].map((s, i) => (
           <div key={s.key} className="flex items-center gap-2">
@@ -302,7 +284,7 @@ export default function NewVerification() {
               {i < currentStepIndex && <CheckCircle2 className="h-3.5 w-3.5" />}
               {s.label}
             </div>
-            {i < 5 && <ChevronRight className="h-4 w-4 text-slate-600" />}
+            {i < 4 && <ChevronRight className="h-4 w-4 text-slate-600" />}
           </div>
         ))}
       </div>
@@ -317,7 +299,7 @@ export default function NewVerification() {
       {/* Step: Document Type */}
       {step === 'document-type' && (
         <div className="space-y-4">
-          <p className="text-sm text-slate-400">Select the type of document you want to verify</p>
+          <p className="text-sm text-slate-400">Select the type of document to verify</p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {docTypes.map((d) => (
               <button
@@ -346,7 +328,7 @@ export default function NewVerification() {
               <FileText className="h-5 w-5 text-cyan-400" />
               <div>
                 <p className="text-sm font-semibold text-white">Document: {docType}</p>
-                <p className="text-xs text-slate-500">Upload a clear photo or scan of your {docType}</p>
+                <p className="text-xs text-slate-500">Upload a clear photo or scan of the {docType}</p>
               </div>
             </div>
           </div>
@@ -367,95 +349,60 @@ export default function NewVerification() {
                 Back
               </button>
               <button
-                onClick={proceedToCamera}
+                onClick={proceedToConsent}
                 className="flex items-center gap-2 rounded-lg bg-cyan-500 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-cyan-400"
               >
-                <Camera className="h-4 w-4" />
-                Proceed to Camera
+                <ShieldCheck className="h-4 w-4" />
+                Continue
               </button>
             </div>
           )}
         </div>
       )}
 
-      {/* Step: Camera */}
-      {step === 'camera' && (
+      {/* Step: Reference Photo (no live camera / no liveness — an existing
+          photo already on record is used for the face match) */}
+      {step === 'reference' && (
         <div className="space-y-6">
           <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4">
             <div className="flex items-start gap-3">
               <Info className="h-5 w-5 shrink-0 text-cyan-400" />
               <div>
-                <p className="text-sm font-medium text-white">Real-Time Face Capture</p>
+                <p className="text-sm font-medium text-white">Reference Photo</p>
                 <p className="mt-1 text-xs text-slate-400">
-                  Your browser will request camera permission. Position your face within the frame and capture when ready.
-                  The captured frame will be processed through the biometric and liveness pipeline.
+                  Upload the photo already on file for this person — e.g. an HR/employee record, hotel
+                  registration photo, bank KYC photo, tenant record, or a previous ID photo. This is
+                  compared against the document photo; no live camera capture or liveness check is
+                  required for this workflow.
                 </p>
               </div>
             </div>
           </div>
 
-          <CameraCapture
-            onCapture={handleFaceCapture}
-            capturedImage={faceImage}
-            onRetake={handleRetake}
+          <DocumentUpload
+            onFileSelected={handleReferenceSelected}
+            uploadedImage={refImage}
+            fileName={refFile?.name || null}
+            onRemove={handleRemoveReference}
           />
 
-          {faceImage && (
-            <button
-              onClick={() => setStep('liveness')}
-              className="flex items-center gap-2 rounded-lg bg-cyan-500 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-cyan-400"
-            >
-              <ShieldCheck className="h-4 w-4" />
-              Proceed to Liveness Check
-            </button>
+          {refImage && (
+            <div className="flex justify-between">
+              <button
+                onClick={() => { setRefImage(null); setRefFile(null); setStep('upload'); }}
+                className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800"
+              >
+                Back
+              </button>
+              <button
+                onClick={runProcessingPipeline}
+                className="flex items-center gap-2 rounded-lg bg-cyan-500 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-cyan-400"
+              >
+                <ScanFace className="h-4 w-4" />
+                Run Verification
+              </button>
+            </div>
           )}
-        </div>
-      )}
-
-      {/* Step: Liveness — reuses the live camera */}
-      {step === 'liveness' && faceImage && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <div className="space-y-4">
-              <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
-                <div className="flex items-center gap-2">
-                  <ScanFace className="h-5 w-5 text-cyan-400" />
-                  <h3 className="text-sm font-semibold text-white">Captured Face</h3>
-                </div>
-                <div className="mt-3 overflow-hidden rounded-lg border border-slate-700">
-                  <img src={faceImage} alt="Captured face" className="w-full" />
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
-                <div className="flex items-center gap-2">
-                  <Eye className="h-5 w-5 text-cyan-400" />
-                  <h3 className="text-sm font-semibold text-white">Live Camera Feed</h3>
-                </div>
-                <video
-                  ref={liveVideoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="mt-3 w-full rounded-lg border border-slate-700 -scale-x-100"
-                />
-                <p className="mt-2 text-xs text-slate-500">
-                  Camera stays active for liveness monitoring. Keep your face in frame.
-                </p>
-              </div>
-            </div>
-
-            <div>
-              <LivenessCheck
-                videoRef={liveVideoRef}
-                streamRef={liveStreamRef}
-                onComplete={handleLivenessComplete}
-                onRetry={handleLivenessRetry}
-                completed={livenessResult !== null}
-                result={livenessResult}
-              />
-            </div>
-          </div>
         </div>
       )}
 
@@ -497,8 +444,8 @@ export default function NewVerification() {
 
       <ConsentModal
         open={consentOpen}
-        title="Biometric & Identity Verification Consent"
-        description="You are about to begin biometric verification. Your camera will be used to capture a live face image and perform liveness detection. The captured image and document will be processed for identity verification. Government verification will only be attempted if authorized API credentials are configured on the backend."
+        title="Identity Verification Consent"
+        description="You are about to begin identity verification. The uploaded document photo and the reference photo on file will be processed and compared for identity verification. Government verification will only be attempted if authorized API credentials are configured on the backend."
         onAccept={handleConsentAccept}
         onDecline={handleConsentDecline}
       />
