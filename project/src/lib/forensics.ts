@@ -65,7 +65,13 @@ export async function analyzeForensics(imageData: string): Promise<ForensicAnaly
   const compressionAnomalyScore = detectCompressionAnomaly(pixels, canvas.width, canvas.height);
   const compression_anomaly = compressionAnomalyScore > 0.7;
 
-  const pixel_inconsistency = avgVariance < 5 || edgeCount < (pixels.length / 4) * 0.01;
+  // A real ID document typically has large plain/white background regions,
+  // which naturally pull the *global* average pixel-to-pixel variance down
+  // even though the document is completely genuine. Requiring BOTH signals
+  // together (low variance AND low edge count) avoids flagging documents
+  // that are simply plain-background-heavy but still contain normal amounts
+  // of text/photo detail.
+  const pixel_inconsistency = avgVariance < 5 && edgeCount < (pixels.length / 4) * 0.01;
 
   const elaCanvas = await performELA(ctx, canvas.width, canvas.height);
   const elaScore = elaCanvas.score;
@@ -92,10 +98,14 @@ export async function analyzeForensics(imageData: string): Promise<ForensicAnaly
 
   const anomalyFlagCount =
     (copy_paste_anomaly ? 1 : 0) + (pixel_inconsistency ? 1 : 0) + (compression_anomaly ? 1 : 0);
+  // A single weak heuristic flag (e.g. one caused by messaging-app
+  // recompression) is common even on genuine documents and shouldn't alone
+  // trigger a manual review. Require at least two independent signals to
+  // agree before flagging for review.
   const status =
-    tampering_probability > 60 || anomalyFlagCount >= 2
+    tampering_probability > 60 || anomalyFlagCount >= 3
       ? 'FLAGGED'
-      : anomalyFlagCount === 1
+      : anomalyFlagCount >= 2
         ? 'REVIEW'
         : 'PASSED';
 
@@ -144,10 +154,6 @@ function detectCopyPaste(pixels: Uint8ClampedArray, width: number, height: numbe
     }
   }
 
-  // Flat/near-uniform blocks (plain backgrounds, white space, solid fills)
-  // are near-identical to each other in almost every real photo and are
-  // not evidence of copy-move tampering — exclude them so they don't
-  // dominate the comparison.
   const MIN_BLOCK_VARIANCE = 25;
   const texturedBlocks = blocks.filter((b) => b.variance > MIN_BLOCK_VARIANCE);
   if (texturedBlocks.length < 2) return 0;
@@ -164,9 +170,6 @@ function detectCopyPaste(pixels: Uint8ClampedArray, width: number, height: numbe
     }
   }
 
-  // Require more than a single coincidental match before treating this as
-  // a real duplicated-region signal — one matching pair among hundreds of
-  // blocks happens by chance in ordinary photos.
   if (strongMatchCount < 3) return Math.min(maxSimilarity, 0.7);
   return maxSimilarity;
 }
@@ -199,13 +202,6 @@ async function performELA(
 ): Promise<{ score: number; regions: unknown[] }> {
   const originalData = ctx.getImageData(0, 0, width, height);
 
-  // Actually perform Error Level Analysis: re-compress the image at a fixed
-  // JPEG quality, reload it, and diff it pixel-by-pixel against the
-  // original. A region pasted in from a different source usually has a
-  // different compression history, so it shows a different re-compression
-  // error than the rest of the document — that's the real ELA signal
-  // (this previously just returned a hardcoded 0.15 and never looked at
-  // the image at all).
   const sourceCanvas = document.createElement('canvas');
   sourceCanvas.width = width;
   sourceCanvas.height = height;
@@ -261,9 +257,6 @@ async function performELA(
     blockDiffs.reduce((a, b) => a + (b.diff - meanBlockDiff) ** 2, 0) / (blockDiffs.length || 1),
   );
 
-  // Blocks whose recompression error stands well above the document's own
-  // average are the classic ELA tell for a region edited/pasted in
-  // separately from the rest of the image.
   const outlierThreshold = meanBlockDiff + stdBlockDiff * 2;
   const outlierBlocks = blockDiffs.filter((b) => b.diff > outlierThreshold && b.diff > 8);
 
