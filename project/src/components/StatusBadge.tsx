@@ -1,18 +1,17 @@
 
-
 import type { VerificationStatus, GovernmentStatus, RiskLevel, MatchStatus, LivenessStatus, ForensicStatus, IdentityStatus } from '@/lib/types';
 
 type StatusType = VerificationStatus | GovernmentStatus | RiskLevel | MatchStatus | LivenessStatus | ForensicStatus | IdentityStatus | string;
 
-const statusConfig: Record<string, { bg: string; text: string; border: string; dot: string }> = {
-  CLEAR: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30', dot: 'bg-emerald-500' },
-  VERIFIED: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30', dot: 'bg-emerald-500' },
-  MATCH: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30', dot: 'bg-emerald-500' },
-  PASSED: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30', dot: 'bg-emerald-500' },
+const statusConfig: Record<string, { bg: string; text: string; border: string; dot: string; glow?: string }> = {
+  CLEAR: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30', dot: 'bg-emerald-500', glow: 'shadow-[0_0_10px_rgba(16,185,129,0.4)]' },
+  VERIFIED: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30', dot: 'bg-emerald-500', glow: 'shadow-[0_0_10px_rgba(16,185,129,0.4)]' },
+  MATCH: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30', dot: 'bg-emerald-500', glow: 'shadow-[0_0_10px_rgba(16,185,129,0.4)]' },
+  PASSED: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30', dot: 'bg-emerald-500', glow: 'shadow-[0_0_10px_rgba(16,185,129,0.4)]' },
   'LIVENESS PASS': { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30', dot: 'bg-emerald-500' },
   'REAL CAMERA': { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30', dot: 'bg-emerald-500' },
 
-  REVIEW: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/30', dot: 'bg-amber-500' },
+  REVIEW: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/30', dot: 'bg-amber-500', glow: 'shadow-[0_0_10px_rgba(245,158,11,0.4)]' },
   PENDING: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/30', dot: 'bg-amber-500' },
   INCONCLUSIVE: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/30', dot: 'bg-amber-500' },
   'PARTIALLY VERIFIED': { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/30', dot: 'bg-amber-500' },
@@ -20,7 +19,7 @@ const statusConfig: Record<string, { bg: string; text: string; border: string; d
   'VIRTUAL CAMERA WARNING': { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/30', dot: 'bg-amber-500' },
   'REPLAY WARNING': { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/30', dot: 'bg-amber-500' },
 
-  'HIGH RISK': { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/30', dot: 'bg-red-500' },
+  'HIGH RISK': { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/30', dot: 'bg-red-500', glow: 'shadow-[0_0_10px_rgba(239,68,68,0.4)]' },
   FAILED: { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/30', dot: 'bg-red-500' },
   'NO MATCH': { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/30', dot: 'bg-red-500' },
   'LIVENESS FAIL': { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/30', dot: 'bg-red-500' },
@@ -49,12 +48,10 @@ export default function StatusBadge({ status, size = 'md' }: { status: StatusTyp
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border ${config.bg} ${config.text} ${config.border} ${sizeClasses} font-medium whitespace-nowrap`}
+      className={`inline-flex animate-fade-in items-center gap-1.5 rounded-full border backdrop-blur-sm transition-shadow duration-300 ${config.bg} ${config.text} ${config.border} ${config.glow || ''} ${sizeClasses} font-medium whitespace-nowrap`}
     >
       <span className={`h-1.5 w-1.5 rounded-full ${config.dot} ${normalized === 'PROCESSING' ? 'animate-pulse' : ''}`} />
       {status || 'PENDING'}
     </span>
   );
 }
-
-
