@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FolderOpen, Search, ScanFace } from 'lucide-react';
@@ -27,21 +28,21 @@ export default function Cases() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex animate-fade-in-up items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Cases</h1>
           <p className="mt-1 text-sm text-slate-400">All verification cases</p>
         </div>
         <button
           onClick={() => navigate('/verification/new')}
-          className="flex items-center gap-2 rounded-lg bg-cyan-500 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-cyan-400"
+          className="btn-glow flex items-center gap-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:scale-[1.03]"
         >
           <ScanFace className="h-4 w-4" />
           New Verification
         </button>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row">
+      <div className="flex animate-fade-in-up flex-col gap-3 sm:flex-row" style={{ animationDelay: '80ms' }}>
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
           <input
@@ -49,13 +50,13 @@ export default function Cases() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by Case ID or document type..."
-            className="w-full rounded-lg border border-slate-700 bg-slate-800/50 py-2.5 pl-10 pr-3 text-sm text-white placeholder-slate-500 outline-none focus:border-cyan-500"
+            className="glass-input w-full py-2.5 pl-10 pr-3 text-sm text-white placeholder-slate-500 outline-none"
           />
         </div>
         <select
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          className="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500"
+          className="glass-input px-3 py-2.5 text-sm text-white outline-none"
         >
           <option value="ALL">All Statuses</option>
           <option value="CLEAR">Clear</option>
@@ -66,10 +67,10 @@ export default function Cases() {
         </select>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/50">
+      <div className="glass-panel animate-fade-in-up overflow-x-auto" style={{ animationDelay: '150ms' }}>
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-800 text-xs text-slate-500">
+            <tr className="border-b border-white/10 text-xs text-slate-500">
               <th className="px-4 py-3 text-left font-medium">Case ID</th>
               <th className="px-4 py-3 text-left font-medium">Document</th>
               <th className="px-4 py-3 text-left font-medium">Verification Status</th>
@@ -81,17 +82,23 @@ export default function Cases() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-500">Loading...</td></tr>
+              <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-500">
+                <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-slate-700 border-t-cyan-500" />
+              </td></tr>
             ) : filtered.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-4 py-12 text-center">
-                  <FolderOpen className="mx-auto mb-3 h-10 w-10 text-slate-600" />
+                  <FolderOpen className="mx-auto mb-3 h-10 w-10 animate-float text-slate-600" />
                   <p className="text-slate-500">No cases found</p>
                 </td>
               </tr>
             ) : (
-              filtered.map((c) => (
-                <tr key={c.id} className="border-b border-slate-800/50 transition-colors hover:bg-slate-800/30">
+              filtered.map((c, i) => (
+                <tr
+                  key={c.id}
+                  className="animate-fade-in-up border-b border-white/5 transition-colors hover:bg-white/[0.04]"
+                  style={{ animationDelay: `${i * 40}ms` }}
+                >
                   <td className="px-4 py-3 font-mono text-xs text-cyan-400">{c.case_id}</td>
                   <td className="px-4 py-3 text-slate-300">{c.document_type}</td>
                   <td className="px-4 py-3"><StatusBadge status={c.status} size="sm" /></td>
@@ -107,7 +114,7 @@ export default function Cases() {
                   <td className="px-4 py-3">
                     <button
                       onClick={() => navigate(`/cases/${c.id}`)}
-                      className="text-xs font-medium text-cyan-400 hover:text-cyan-300"
+                      className="text-xs font-medium text-cyan-400 transition-colors hover:text-cyan-300"
                     >
                       View Details
                     </button>
