@@ -1,4 +1,3 @@
-
 import { useEffect, useState, type ReactNode } from 'react';
 
 interface KPICardProps {
@@ -10,21 +9,21 @@ interface KPICardProps {
 }
 
 const accentMap = {
-  blue: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  emerald: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  amber: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  red: 'bg-red-500/10 text-red-400 border-red-500/20',
-  slate: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
-  cyan: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
+  blue: 'bg-blue-50 text-blue-600 border-blue-200',
+  emerald: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+  amber: 'bg-amber-50 text-amber-600 border-amber-200',
+  red: 'bg-red-50 text-red-600 border-red-200',
+  slate: 'bg-slate-100 text-slate-600 border-slate-200',
+  cyan: 'bg-cyan-50 text-cyan-600 border-cyan-200',
 };
 
 const glowMap = {
-  blue: 'hover:shadow-[0_0_30px_-5px_rgba(59,130,246,0.5)] hover:border-blue-500/40',
-  emerald: 'hover:shadow-[0_0_30px_-5px_rgba(16,185,129,0.5)] hover:border-emerald-500/40',
-  amber: 'hover:shadow-[0_0_30px_-5px_rgba(245,158,11,0.5)] hover:border-amber-500/40',
-  red: 'hover:shadow-[0_0_30px_-5px_rgba(239,68,68,0.5)] hover:border-red-500/40',
-  slate: 'hover:shadow-[0_0_30px_-5px_rgba(100,116,139,0.5)] hover:border-slate-500/40',
-  cyan: 'hover:shadow-[0_0_30px_-5px_rgba(34,211,238,0.5)] hover:border-cyan-500/40',
+  blue: 'hover:shadow-[0_8px_24px_-4px_rgba(59,130,246,0.25)] hover:border-blue-300',
+  emerald: 'hover:shadow-[0_8px_24px_-4px_rgba(16,185,129,0.25)] hover:border-emerald-300',
+  amber: 'hover:shadow-[0_8px_24px_-4px_rgba(245,158,11,0.25)] hover:border-amber-300',
+  red: 'hover:shadow-[0_8px_24px_-4px_rgba(239,68,68,0.25)] hover:border-red-300',
+  slate: 'hover:shadow-[0_8px_24px_-4px_rgba(100,116,139,0.25)] hover:border-slate-300',
+  cyan: 'hover:shadow-[0_8px_24px_-4px_rgba(6,182,212,0.25)] hover:border-cyan-300',
 };
 
 function useCountUp(target: number, duration = 900) {
@@ -66,12 +65,12 @@ export default function KPICard({ label, value, icon, accent = 'blue', delay = 0
         >
           {icon}
         </div>
-        <span className="text-2xl font-bold text-white tabular-nums">
+        <span className="text-2xl font-bold text-slate-900 tabular-nums">
           {isNumber ? displayValue : value}
         </span>
       </div>
-      <p className="mt-3 text-xs font-medium text-slate-400">{label}</p>
-      <div className="mt-2 h-0.5 w-0 overflow-hidden rounded-full bg-gradient-to-r from-transparent via-current to-transparent opacity-0 transition-all duration-500 group-hover:w-full group-hover:opacity-40" />
+      <p className="mt-3 text-xs font-medium text-slate-500">{label}</p>
+      <div className="mt-2 h-0.5 w-0 overflow-hidden rounded-full bg-gradient-to-r from-transparent via-current to-transparent opacity-0 transition-all duration-500 group-hover:w-full group-hover:opacity-30" />
     </div>
   );
 }
