@@ -1,4 +1,5 @@
 
+
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ShieldCheck, Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
@@ -102,9 +103,10 @@ export default function Login() {
         </div>
 
         <p className="mt-6 text-center text-xs text-slate-600">
-          Smart India Hackathon 2026 · Identity Screening Platform
+          Smart India Hackathon 2026 · SIH #26188 · AI-Based Fake Identity &amp; Document Screening System
         </p>
       </div>
     </div>
   );
 }
+
