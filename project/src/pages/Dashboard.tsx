@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -6,7 +7,7 @@ import {
 } from 'recharts';
 import {
   ShieldCheck, FileCheck2, ScanFace, AlertTriangle, ClipboardList, HelpCircle,
-  ArrowRight, TrendingUp,
+  ArrowRight, TrendingUp, Sparkles,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { VerificationCase } from '@/lib/types';
@@ -46,15 +47,25 @@ export default function Dashboard() {
   const recentCases = cases.slice(0, 8);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="relative space-y-6">
+      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute -top-20 left-1/3 h-[400px] w-[400px] animate-glow-pulse rounded-full bg-cyan-500/[0.06] blur-[120px]" />
+        <div className="absolute bottom-0 right-0 h-[350px] w-[350px] animate-float-slow rounded-full bg-blue-500/[0.05] blur-[100px]" />
+      </div>
+
+      <div className="flex animate-fade-in-up items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-white">
+            <Sparkles className="h-6 w-6 text-cyan-400" />
+            <span className="bg-gradient-to-r from-white via-cyan-100 to-white bg-clip-text">
+              Dashboard
+            </span>
+          </h1>
           <p className="mt-1 text-sm text-slate-400">Identity verification overview and analytics</p>
         </div>
         <button
           onClick={() => navigate('/verification/new')}
-          className="flex items-center gap-2 rounded-lg bg-cyan-500 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-cyan-400"
+          className="btn-glow flex items-center gap-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:scale-[1.03]"
         >
           <ScanFace className="h-4 w-4" />
           New Verification
@@ -62,25 +73,25 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-        <KPICard label="Total Verifications" value={total} icon={<ShieldCheck className="h-5 w-5" />} accent="blue" />
-        <KPICard label="Gov Verified" value={govVerified} icon={<FileCheck2 className="h-5 w-5" />} accent="emerald" />
-        <KPICard label="Biometric Passed" value={biometricPassed} icon={<ScanFace className="h-5 w-5" />} accent="cyan" />
-        <KPICard label="Flagged" value={flagged} icon={<AlertTriangle className="h-5 w-5" />} accent="red" />
-        <KPICard label="Manual Review" value={manualReview} icon={<ClipboardList className="h-5 w-5" />} accent="amber" />
-        <KPICard label="Unverified" value={unverified} icon={<HelpCircle className="h-5 w-5" />} accent="slate" />
+        <KPICard label="Total Verifications" value={total} icon={<ShieldCheck className="h-5 w-5" />} accent="blue" delay={0} />
+        <KPICard label="Gov Verified" value={govVerified} icon={<FileCheck2 className="h-5 w-5" />} accent="emerald" delay={60} />
+        <KPICard label="Biometric Passed" value={biometricPassed} icon={<ScanFace className="h-5 w-5" />} accent="cyan" delay={120} />
+        <KPICard label="Flagged" value={flagged} icon={<AlertTriangle className="h-5 w-5" />} accent="red" delay={180} />
+        <KPICard label="Manual Review" value={manualReview} icon={<ClipboardList className="h-5 w-5" />} accent="amber" delay={240} />
+        <KPICard label="Unverified" value={unverified} icon={<HelpCircle className="h-5 w-5" />} accent="slate" delay={300} />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-5 lg:col-span-2">
+        <div className="glass-panel animate-fade-in-up p-5 lg:col-span-2" style={{ animationDelay: '150ms' }}>
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-slate-300">Verification Volume</h2>
-            <TrendingUp className="h-4 w-4 text-slate-500" />
+            <TrendingUp className="h-4 w-4 animate-float text-cyan-500" />
           </div>
           <ResponsiveContainer width="100%" height={260}>
             <AreaChart data={volumeData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="volumeGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.4} />
+                  <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.5} />
                   <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
                 </linearGradient>
               </defs>
@@ -88,15 +99,15 @@ export default function Dashboard() {
               <XAxis dataKey="date" stroke="#64748b" fontSize={11} />
               <YAxis stroke="#64748b" fontSize={11} allowDecimals={false} />
               <Tooltip
-                contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', fontSize: '12px' }}
+                contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', fontSize: '12px', backdropFilter: 'blur(8px)' }}
                 labelStyle={{ color: '#94a3b8' }}
               />
-              <Area type="monotone" dataKey="count" stroke="#06b6d4" strokeWidth={2} fill="url(#volumeGrad)" />
+              <Area type="monotone" dataKey="count" stroke="#06b6d4" strokeWidth={2.5} fill="url(#volumeGrad)" animationDuration={1200} animationEasing="ease-out" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
+        <div className="glass-panel animate-fade-in-up p-5" style={{ animationDelay: '250ms' }}>
           <h2 className="text-sm font-semibold text-slate-300">Risk Distribution</h2>
           <ResponsiveContainer width="100%" height={260}>
             <PieChart>
@@ -108,13 +119,15 @@ export default function Dashboard() {
                 outerRadius={80}
                 paddingAngle={3}
                 dataKey="value"
+                animationDuration={1000}
+                animationBegin={200}
               >
                 {(riskData.length > 0 ? riskData : [{ name: 'No Data', value: 1, color: '#334155' }]).map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
+                  <Cell key={i} fill={entry.color} stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
                 ))}
               </Pie>
               <Tooltip
-                contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', fontSize: '12px' }}
+                contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', fontSize: '12px', backdropFilter: 'blur(8px)' }}
               />
               <Legend wrapperStyle={{ fontSize: '11px', color: '#94a3b8' }} />
             </PieChart>
@@ -123,7 +136,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
+        <div className="glass-panel animate-fade-in-up p-5" style={{ animationDelay: '350ms' }}>
           <h2 className="text-sm font-semibold text-slate-300">Document Types</h2>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={docTypeData} layout="vertical" margin={{ top: 10, right: 10, left: 20, bottom: 0 }}>
@@ -131,27 +144,27 @@ export default function Dashboard() {
               <XAxis type="number" stroke="#64748b" fontSize={11} allowDecimals={false} />
               <YAxis type="category" dataKey="name" stroke="#64748b" fontSize={11} width={80} />
               <Tooltip
-                contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', fontSize: '12px' }}
+                contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', fontSize: '12px', backdropFilter: 'blur(8px)' }}
               />
-              <Bar dataKey="count" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="count" fill="#3b82f6" radius={[0, 6, 6, 0]} animationDuration={900} animationEasing="ease-out" />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-5 lg:col-span-2">
+        <div className="glass-panel animate-fade-in-up p-5 lg:col-span-2" style={{ animationDelay: '450ms' }}>
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-slate-300">Recent Cases</h2>
             <button
               onClick={() => navigate('/cases')}
-              className="flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300"
+              className="group flex items-center gap-1 text-xs text-cyan-400 transition-colors hover:text-cyan-300"
             >
-              View All <ArrowRight className="h-3 w-3" />
+              View All <ArrowRight className="h-3 w-3 transition-transform duration-200 group-hover:translate-x-1" />
             </button>
           </div>
           <div className="mt-4 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-800 text-xs text-slate-500">
+                <tr className="border-b border-white/10 text-xs text-slate-500">
                   <th className="px-3 py-2 text-left font-medium">Case ID</th>
                   <th className="px-3 py-2 text-left font-medium">Document</th>
                   <th className="px-3 py-2 text-left font-medium">Status</th>
@@ -162,7 +175,9 @@ export default function Dashboard() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="px-3 py-8 text-center text-slate-500">Loading...</td>
+                    <td colSpan={5} className="px-3 py-8 text-center text-slate-500">
+                      <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-slate-700 border-t-cyan-500" />
+                    </td>
                   </tr>
                 ) : recentCases.length === 0 ? (
                   <tr>
@@ -171,11 +186,12 @@ export default function Dashboard() {
                     </td>
                   </tr>
                 ) : (
-                  recentCases.map((c) => (
+                  recentCases.map((c, i) => (
                     <tr
                       key={c.id}
                       onClick={() => navigate(`/cases/${c.id}`)}
-                      className="cursor-pointer border-b border-slate-800/50 transition-colors hover:bg-slate-800/30"
+                      className="animate-fade-in-up cursor-pointer border-b border-white/5 transition-colors hover:bg-white/[0.04]"
+                      style={{ animationDelay: `${i * 60}ms` }}
                     >
                       <td className="px-3 py-3 font-mono text-xs text-cyan-400">{c.case_id}</td>
                       <td className="px-3 py-3 text-slate-300">{c.document_type}</td>
