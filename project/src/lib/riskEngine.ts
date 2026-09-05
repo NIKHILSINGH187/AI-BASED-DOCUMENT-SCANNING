@@ -24,8 +24,15 @@ export function evaluateRisk(
   government: GovernmentVerification | null,
   identityBinding: IdentityBinding | null,
 ): RiskResult {
-  const livenessStatus = liveness?.status || 'PENDING';
-  const livenessPassed = livenessStatus === 'PASSED';
+  // Liveness / live-camera capture is intentionally not part of this
+  // workflow anymore (verification now compares the document photo against
+  // an existing reference photo already on file — e.g. HR records, hotel
+  // registration, bank KYC records — rather than a fresh live selfie). When
+  // `liveness` is null it means the check was never applicable, and that
+  // should be neutral, not a penalized failure.
+  const livenessAttempted = liveness !== null;
+  const livenessStatus = liveness?.status || (livenessAttempted ? 'PENDING' : 'NOT_APPLICABLE');
+  const livenessPassed = !livenessAttempted || livenessStatus === 'PASSED';
   const ocrCompleted = ocr?.status === 'COMPLETED';
   const ocrConfidence = ocr?.ocr_confidence || 0;
   const forensicStatus = forensic?.status || 'PENDING';
@@ -44,7 +51,7 @@ export function evaluateRisk(
   const govSandboxInvalid = govStatus === 'SANDBOX_INVALID';
   const identityStatus = identityBinding?.identity_status || 'PENDING';
   const identityMismatch = identityStatus === 'MISMATCH';
-  const antiSpoof = liveness?.anti_spoof_status || 'MANUAL REVIEW';
+  const antiSpoof = liveness?.anti_spoof_status || (livenessAttempted ? 'MANUAL REVIEW' : 'NOT APPLICABLE');
   const antiSpoofFailed = antiSpoof.includes('WARNING') || antiSpoof.includes('FAIL');
 
   // Forensics contributes to risk in proportion to how suspicious the
@@ -78,7 +85,7 @@ export function evaluateRisk(
   if (forensicFlagged) reasons.push(`document forensics flagged this document as likely tampered (tampering probability ${Math.round(tamperingProbability)}%)`);
   else if (forensicReview) reasons.push(`document forensics found an anomaly that needs manual review (tampering probability ${Math.round(tamperingProbability)}%)`);
   if (faceMatchStatus === 'NO MATCH' || faceMatchStatus === 'NO_MATCH') reasons.push('the live face does not match the document photo');
-  if (!livenessPassed) reasons.push('liveness check did not pass');
+  if (livenessAttempted && !livenessPassed) reasons.push('liveness check did not pass');
   if (antiSpoofFailed) reasons.push('anti-spoofing check raised a warning');
   if (!ocrCompleted || ocrConfidence < 0.5) reasons.push('document text could not be read with confidence');
   if (govUnavailable) reasons.push('government identity verification could not be completed');
@@ -111,7 +118,7 @@ export function evaluateRisk(
   }
 
   return {
-    capture_integrity: livenessPassed ? 'VERIFIED' : 'FAILED',
+    capture_integrity: !livenessAttempted ? 'N/A' : livenessPassed ? 'VERIFIED' : 'FAILED',
     liveness_status: livenessStatus,
     face_match_status: faceMatchStatus,
     ocr_quality: ocrCompleted ? (ocrConfidence > 0.7 ? 'HIGH' : ocrConfidence > 0.5 ? 'MEDIUM' : 'LOW') : 'FAILED',
