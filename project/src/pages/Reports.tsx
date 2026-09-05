@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -32,7 +33,6 @@ export default function Reports() {
   ].filter((d) => d.value > 0);
 
   const docTypeData = aggregateByDocType(cases);
-
   const trendData = aggregateByDate(cases);
 
   const govStatusData = [
@@ -72,14 +72,14 @@ export default function Reports() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex animate-fade-in-up items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Reports</h1>
           <p className="mt-1 text-sm text-slate-400">Verification analytics and downloadable reports</p>
         </div>
         <button
           onClick={handleExport}
-          className="flex items-center gap-2 rounded-lg border border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800"
+          className="glass-card flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-300 hover:text-white"
         >
           <Download className="h-4 w-4" />
           Export CSV
@@ -87,26 +87,26 @@ export default function Reports() {
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label="Total Cases" value={total} />
-        <StatCard label="Government Verified" value={govVerified} accent="emerald" />
-        <StatCard label="Flagged" value={flagged} accent="red" />
-        <StatCard label="Manual Review" value={review} accent="amber" />
+        <StatCard label="Total Cases" value={total} delay={0} />
+        <StatCard label="Government Verified" value={govVerified} accent="emerald" delay={60} />
+        <StatCard label="Flagged" value={flagged} accent="red" delay={120} />
+        <StatCard label="Manual Review" value={review} accent="amber" delay={180} />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <ChartCard title="Verification Trend">
+        <ChartCard title="Verification Trend" delay={100}>
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
               <XAxis dataKey="date" stroke="#64748b" fontSize={11} />
               <YAxis stroke="#64748b" fontSize={11} allowDecimals={false} />
-              <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', fontSize: '12px' }} />
-              <Line type="monotone" dataKey="count" stroke="#06b6d4" strokeWidth={2} dot={{ fill: '#06b6d4', r: 3 }} />
+              <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', fontSize: '12px', backdropFilter: 'blur(8px)' }} />
+              <Line type="monotone" dataKey="count" stroke="#06b6d4" strokeWidth={2.5} dot={{ fill: '#06b6d4', r: 3 }} animationDuration={1200} />
             </LineChart>
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Risk Distribution">
+        <ChartCard title="Risk Distribution" delay={180}>
           <ResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie
@@ -116,30 +116,31 @@ export default function Reports() {
                 outerRadius={80}
                 paddingAngle={3}
                 dataKey="value"
+                animationDuration={1000}
               >
                 {(riskData.length > 0 ? riskData : [{ name: 'No Data', value: 1, color: '#334155' }]).map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
+                  <Cell key={i} fill={entry.color} stroke="rgba(255,255,255,0.1)" />
                 ))}
               </Pie>
-              <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', fontSize: '12px' }} />
+              <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', fontSize: '12px', backdropFilter: 'blur(8px)' }} />
               <Legend wrapperStyle={{ fontSize: '11px', color: '#94a3b8' }} />
             </PieChart>
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Document Types">
+        <ChartCard title="Document Types" delay={260}>
           <ResponsiveContainer width="100%" height={250}>
             <BarChart data={docTypeData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
               <XAxis dataKey="name" stroke="#64748b" fontSize={10} angle={-20} textAnchor="end" height={50} />
               <YAxis stroke="#64748b" fontSize={11} allowDecimals={false} />
-              <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', fontSize: '12px' }} />
-              <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', fontSize: '12px', backdropFilter: 'blur(8px)' }} />
+              <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} animationDuration={900} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Government Verification Status">
+        <ChartCard title="Government Verification Status" delay={340}>
           <ResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie
@@ -150,12 +151,13 @@ export default function Reports() {
                 outerRadius={80}
                 paddingAngle={3}
                 dataKey="value"
+                animationDuration={1000}
               >
                 {govStatusData.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
+                  <Cell key={i} fill={entry.color} stroke="rgba(255,255,255,0.1)" />
                 ))}
               </Pie>
-              <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', fontSize: '12px' }} />
+              <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', fontSize: '12px', backdropFilter: 'blur(8px)' }} />
               <Legend wrapperStyle={{ fontSize: '11px', color: '#94a3b8' }} />
             </PieChart>
           </ResponsiveContainer>
@@ -164,7 +166,7 @@ export default function Reports() {
 
       {total === 0 && (
         <div className="flex flex-col items-center justify-center py-16">
-          <FileBarChart className="h-12 w-12 text-slate-600" />
+          <FileBarChart className="h-12 w-12 animate-float text-slate-600" />
           <p className="mt-3 text-sm text-slate-500">No data to report yet. Complete some verifications first.</p>
         </div>
       )}
@@ -172,23 +174,23 @@ export default function Reports() {
   );
 }
 
-function StatCard({ label, value, accent }: { label: string; value: number; accent?: 'emerald' | 'red' | 'amber' }) {
+function StatCard({ label, value, accent, delay }: { label: string; value: number; accent?: 'emerald' | 'red' | 'amber'; delay?: number }) {
   const colorMap = {
     emerald: 'text-emerald-400',
     red: 'text-red-400',
     amber: 'text-amber-400',
   };
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+    <div className="glass-card animate-fade-in-up p-4" style={{ animationDelay: `${delay || 0}ms` }}>
       <p className="text-3xl font-bold text-white">{value}</p>
       <p className={`mt-1 text-xs font-medium ${accent ? colorMap[accent] : 'text-slate-400'}`}>{label}</p>
     </div>
   );
 }
 
-function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+function ChartCard({ title, children, delay }: { title: string; children: React.ReactNode; delay?: number }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
+    <div className="glass-panel animate-fade-in-up p-5" style={{ animationDelay: `${delay || 0}ms` }}>
       <h2 className="mb-4 text-sm font-semibold text-slate-300">{title}</h2>
       {children}
     </div>
