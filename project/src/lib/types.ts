@@ -1,3 +1,4 @@
+
 export type VerificationStatus =
   | 'CLEAR'
   | 'REVIEW'
@@ -12,7 +13,9 @@ export type GovernmentStatus =
   | 'PENDING'
   | 'NOT_CONFIGURED'
   | 'UNAVAILABLE'
-  | 'INCONCLUSIVE';
+  | 'INCONCLUSIVE'
+  | 'SANDBOX_VALID'
+  | 'SANDBOX_INVALID';
 
 export type MatchStatus = 'MATCH' | 'NO MATCH' | 'INCONCLUSIVE' | 'SERVICE UNAVAILABLE' | 'PENDING';
 
