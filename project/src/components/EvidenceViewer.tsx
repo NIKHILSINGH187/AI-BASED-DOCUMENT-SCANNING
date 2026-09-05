@@ -26,23 +26,23 @@ export default function EvidenceViewer({ evidence }: { evidence: EvidenceItem[] 
   const renderContent = (item: EvidenceItem) => {
     if (item.content && item.content.startsWith('data:image')) {
       return (
-        <div className="overflow-hidden rounded-lg border border-slate-700">
+        <div className="overflow-hidden rounded-lg border border-slate-200">
           <img src={item.content} alt={item.label || 'Evidence'} className="w-full" />
         </div>
       );
     }
     return (
-      <pre className="max-h-80 overflow-y-auto rounded-lg border border-slate-800 bg-slate-950 p-4 text-xs text-slate-400 whitespace-pre-wrap">
+      <pre className="max-h-80 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-4 text-xs text-slate-500 whitespace-pre-wrap">
         {item.content || 'No content'}
       </pre>
     );
   };
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
+    <div className="rounded-xl border border-slate-200 bg-white p-5">
       <div className="flex items-center gap-2">
         <FolderOpen className="h-5 w-5 text-cyan-400" />
-        <h3 className="text-sm font-semibold text-white">Evidence Viewer</h3>
+        <h3 className="text-sm font-semibold text-slate-900">Evidence Viewer</h3>
       </div>
 
       {evidence.length === 0 ? (
@@ -57,7 +57,7 @@ export default function EvidenceViewer({ evidence }: { evidence: EvidenceItem[] 
                 className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
                   activeTab === tab.type
                     ? 'border-cyan-500 bg-cyan-500/10 text-cyan-400'
-                    : 'border-slate-700 bg-slate-800/50 text-slate-400 hover:bg-slate-800'
+                    : 'border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100'
                 }`}
               >
                 <tab.icon className="h-3.5 w-3.5" />
@@ -71,9 +71,9 @@ export default function EvidenceViewer({ evidence }: { evidence: EvidenceItem[] 
               <p className="text-sm text-slate-500">No evidence for this category.</p>
             ) : (
               filtered.map((item) => (
-                <div key={item.id} className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+                <div key={item.id} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                   <div className="mb-2 flex items-center justify-between">
-                    <span className="text-sm font-medium text-slate-200">{item.label || item.evidence_type}</span>
+                    <span className="text-sm font-medium text-slate-800">{item.label || item.evidence_type}</span>
                     <span className="text-xs text-slate-500">
                       {new Date(item.created_at).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })}
                     </span>
