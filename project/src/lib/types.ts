@@ -1,4 +1,3 @@
-
 export type VerificationStatus =
   | 'CLEAR'
   | 'REVIEW'
@@ -40,7 +39,9 @@ export type DocumentType =
   | 'PAN'
   | 'Voter ID'
   | 'Passport'
+  | 'Visa'
   | 'Driving Licence'
+  | 'National ID'
   | 'Other Government ID';
 
 export type AntiSpoofStatus =
