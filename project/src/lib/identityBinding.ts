@@ -1,4 +1,3 @@
-
 import type { BindingMatrixEntry, IdentityStatus, OcrResult, GovernmentVerification, BiometricResult, LivenessResult, ForensicResult } from './types';
 
 export interface IdentityBindingResult {
@@ -77,8 +76,8 @@ export function computeIdentityBinding(
     field: 'Liveness',
     ocr: 'N/A',
     government: 'N/A',
-    biometric: liveness?.status === 'PASSED' ? 'PASSED' : liveness?.status || 'N/A',
-    final: liveness?.status === 'PASSED' ? 'PASSED' : liveness?.status || 'N/A',
+    biometric: liveness === null ? 'N/A' : liveness.status === 'PASSED' ? 'PASSED' : liveness.status || 'N/A',
+    final: liveness === null ? 'N/A' : liveness.status === 'PASSED' ? 'PASSED' : liveness.status || 'N/A',
   };
   matrix.push(livenessEntry);
 
