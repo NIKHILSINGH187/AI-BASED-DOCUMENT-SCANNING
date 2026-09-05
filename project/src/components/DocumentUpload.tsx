@@ -58,19 +58,19 @@ export default function DocumentUpload({ onFileSelected, uploadedImage, fileName
   if (uploadedImage) {
     return (
       <div className="space-y-4">
-        <div className="relative overflow-hidden rounded-xl border border-slate-700 bg-slate-900">
+        <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
           <img src={uploadedImage} alt="Document" className="w-full" />
           <div className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full bg-emerald-500/90 px-3 py-1 text-xs font-medium text-white">
             <FileCheck2 className="h-3.5 w-3.5" />
             Uploaded
           </div>
-          <div className="absolute bottom-3 left-3 rounded-md bg-black/60 px-2 py-1 text-xs text-slate-300 backdrop-blur-sm">
+          <div className="absolute bottom-3 left-3 rounded-md bg-black/60 px-2 py-1 text-xs text-slate-200 backdrop-blur-sm">
             {fileName}
           </div>
         </div>
         <button
           onClick={onRemove}
-          className="flex items-center gap-2 rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800 hover:text-red-400"
+          className="flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 hover:text-red-500"
         >
           <X className="h-4 w-4" />
           Remove Document
@@ -89,14 +89,14 @@ export default function DocumentUpload({ onFileSelected, uploadedImage, fileName
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
         className={`flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed p-12 transition-colors ${
-          dragOver ? 'border-cyan-500 bg-cyan-500/5' : 'border-slate-700 bg-slate-900/50'
+          dragOver ? 'border-cyan-500 bg-cyan-500/5' : 'border-slate-200 bg-slate-50'
         }`}
       >
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-800">
-          <FileImage className="h-8 w-8 text-slate-400" />
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
+          <FileImage className="h-8 w-8 text-slate-500" />
         </div>
         <div className="text-center">
-          <p className="text-sm font-medium text-slate-300">Drag & drop your document here</p>
+          <p className="text-sm font-medium text-slate-700">Drag & drop your document here</p>
           <p className="mt-1 text-xs text-slate-500">JPG, PNG, WEBP, BMP · Max 10 MB</p>
         </div>
         <div className="flex gap-3">
@@ -109,7 +109,7 @@ export default function DocumentUpload({ onFileSelected, uploadedImage, fileName
           </button>
           <button
             onClick={() => cameraInputRef.current?.click()}
-            className="flex items-center gap-2 rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800"
+            className="flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100"
           >
             <Camera className="h-4 w-4" />
             Capture Document
