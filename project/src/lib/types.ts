@@ -118,6 +118,13 @@ export interface OcrResult {
   extracted_address: string | null;
   extracted_expiry: string | null;
   extracted_document_type: string | null;
+  extracted_nationality: string | null;
+  visa_number: string | null;
+  visa_type: string | null;
+  entry_validation: string | null;
+  stay_duration: string | null;
+  mrz_data: Record<string, unknown> | null;
+  mrz_valid: boolean | null;
   ocr_confidence: number;
   raw_text: string | null;
   status: OcrStatus;
