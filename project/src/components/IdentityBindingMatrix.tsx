@@ -3,9 +3,9 @@ import type { BindingMatrixEntry } from '@/lib/types';
 
 function getIcon(value: string) {
   const v = value.toUpperCase();
-  if (['MATCH', 'VERIFIED', 'PASSED', 'EXTRACTED', 'REFERENCE', 'COMPLETED'].includes(v))
+  if (['MATCH', 'VERIFIED', 'PASSED', 'EXTRACTED', 'REFERENCE', 'COMPLETED', 'SANDBOX VALID'].includes(v))
     return <CheckCircle2 className="h-4 w-4 text-emerald-400" />;
-  if (['NO MATCH', 'FAILED', 'MISMATCH', 'FLAGGED', 'LIVENESS FAIL'].includes(v))
+  if (['NO MATCH', 'FAILED', 'MISMATCH', 'FLAGGED', 'LIVENESS FAIL', 'SANDBOX INVALID'].includes(v))
     return <XCircle className="h-4 w-4 text-red-400" />;
   if (['N/A', 'NOT APPLICABLE'].includes(v))
     return <MinusCircle className="h-4 w-4 text-slate-600" />;
@@ -16,9 +16,9 @@ function getIcon(value: string) {
 
 function getCellColor(value: string) {
   const v = value.toUpperCase();
-  if (['MATCH', 'VERIFIED', 'PASSED', 'EXTRACTED', 'REFERENCE', 'COMPLETED'].includes(v))
+  if (['MATCH', 'VERIFIED', 'PASSED', 'EXTRACTED', 'REFERENCE', 'COMPLETED', 'SANDBOX VALID'].includes(v))
     return 'text-emerald-400';
-  if (['NO MATCH', 'FAILED', 'MISMATCH', 'FLAGGED', 'LIVENESS FAIL'].includes(v))
+  if (['NO MATCH', 'FAILED', 'MISMATCH', 'FLAGGED', 'LIVENESS FAIL', 'SANDBOX INVALID'].includes(v))
     return 'text-red-400';
   if (['N/A', 'NOT APPLICABLE'].includes(v))
     return 'text-slate-600';
