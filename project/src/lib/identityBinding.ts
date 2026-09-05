@@ -1,3 +1,4 @@
+
 import type { BindingMatrixEntry, IdentityStatus, OcrResult, GovernmentVerification, BiometricResult, LivenessResult, ForensicResult } from './types';
 
 export interface IdentityBindingResult {
@@ -16,6 +17,8 @@ export function computeIdentityBinding(
   const matrix: BindingMatrixEntry[] = [];
 
   const govConnected = government?.status === 'VERIFIED';
+  const govSandboxValid = government?.status === 'SANDBOX_VALID';
+  const govSandboxInvalid = government?.status === 'SANDBOX_INVALID';
   const govAvailable = government !== null && government.status !== 'NOT_CONFIGURED';
 
   const nameEntry: BindingMatrixEntry = {
@@ -39,9 +42,25 @@ export function computeIdentityBinding(
   const docNumEntry: BindingMatrixEntry = {
     field: 'Document Number',
     ocr: ocr?.extracted_document_number ? 'EXTRACTED' : 'N/A',
-    government: govConnected ? (government?.verified_document_number ? 'MATCH' : 'N/A') : govAvailable ? 'N/A' : 'NOT CONNECTED',
+    government: govConnected
+      ? (government?.verified_document_number ? 'MATCH' : 'N/A')
+      : govSandboxValid
+        ? 'SANDBOX VALID'
+        : govSandboxInvalid
+          ? 'SANDBOX INVALID'
+          : govAvailable
+            ? 'N/A'
+            : 'NOT CONNECTED',
     biometric: 'N/A',
-    final: govConnected && government?.verified_document_number && ocr?.extracted_document_number ? 'MATCH' : ocr?.extracted_document_number ? 'EXTRACTED' : 'N/A',
+    final: govConnected && government?.verified_document_number && ocr?.extracted_document_number
+      ? 'MATCH'
+      : govSandboxInvalid
+        ? 'REVIEW'
+        : govSandboxValid
+          ? 'EXTRACTED'
+          : ocr?.extracted_document_number
+            ? 'EXTRACTED'
+            : 'N/A',
   };
   matrix.push(docNumEntry);
 
@@ -87,6 +106,8 @@ export function computeIdentityBinding(
     } else {
       identityStatus = 'PARTIALLY VERIFIED';
     }
+  } else if (govSandboxInvalid) {
+    identityStatus = 'MISMATCH';
   } else {
     const hasData = ocr?.extracted_name || ocr?.extracted_document_number;
     if (hasData) {
@@ -99,6 +120,7 @@ export function computeIdentityBinding(
     identity_status: identityStatus,
     details: {
       government_connected: govConnected,
+      government_sandbox_valid: govSandboxValid,
       ocr_completed: ocr?.status === 'COMPLETED',
       biometric_completed: biometric?.match_status !== 'PENDING',
       liveness_passed: liveness?.status === 'PASSED',
