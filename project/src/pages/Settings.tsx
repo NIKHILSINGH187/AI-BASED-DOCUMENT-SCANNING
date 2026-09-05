@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Shield, KeyRound, Database, Save, Check, AlertCircle } from 'lucide-react';
+import { Shield, KeyRound, Database, Save, Check, AlertCircle } from 'lucide-react';
 import { checkGovernmentApiConfigured } from '@/lib/gov';
 
 export default function Settings() {
@@ -19,15 +20,14 @@ export default function Settings() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="animate-fade-in-up">
         <h1 className="text-2xl font-bold text-white">Settings</h1>
         <p className="mt-1 text-sm text-slate-400">Configure verification platform settings</p>
       </div>
 
-      {/* Government API Status */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
+      <div className="glass-panel animate-fade-in-up p-6" style={{ animationDelay: '80ms' }}>
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/5">
             <Shield className="h-5 w-5 text-cyan-400" />
           </div>
           <div>
@@ -43,7 +43,7 @@ export default function Settings() {
         </div>
 
         {!govConfigured && (
-          <div className="mt-4 rounded-lg border border-amber-500/20 bg-amber-500/5 p-4">
+          <div className="mt-4 animate-fade-in rounded-lg border border-amber-500/20 bg-amber-500/5 p-4">
             <div className="flex items-start gap-2">
               <AlertCircle className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
               <div>
@@ -66,10 +66,9 @@ export default function Settings() {
         )}
       </div>
 
-      {/* Security Settings */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
+      <div className="glass-panel animate-fade-in-up p-6" style={{ animationDelay: '160ms' }}>
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/5">
             <KeyRound className="h-5 w-5 text-cyan-400" />
           </div>
           <div>
@@ -85,7 +84,7 @@ export default function Settings() {
               type="number"
               value={maxFileSize}
               onChange={(e) => setMaxFileSize(e.target.value)}
-              className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-white outline-none focus:border-cyan-500"
+              className="glass-input mt-1.5 w-full px-3 py-2 text-sm text-white outline-none"
             />
           </div>
           <div>
@@ -94,16 +93,15 @@ export default function Settings() {
               type="number"
               value={sessionTimeout}
               onChange={(e) => setSessionTimeout(e.target.value)}
-              className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-white outline-none focus:border-cyan-500"
+              className="glass-input mt-1.5 w-full px-3 py-2 text-sm text-white outline-none"
             />
           </div>
         </div>
       </div>
 
-      {/* Database Info */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
+      <div className="glass-panel animate-fade-in-up p-6" style={{ animationDelay: '240ms' }}>
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/5">
             <Database className="h-5 w-5 text-cyan-400" />
           </div>
           <div>
@@ -132,10 +130,10 @@ export default function Settings() {
         </div>
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex animate-fade-in-up justify-end" style={{ animationDelay: '300ms' }}>
         <button
           onClick={handleSave}
-          className="flex items-center gap-2 rounded-lg bg-cyan-500 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-cyan-400"
+          className="btn-glow flex items-center gap-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-2.5 text-sm font-medium text-white"
         >
           {saved ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
           {saved ? 'Saved' : 'Save Settings'}
@@ -147,11 +145,11 @@ export default function Settings() {
 
 function ApiStatusRow({ name, configured }: { name: string; configured: boolean }) {
   return (
-    <div className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-950/50 p-3">
+    <div className="flex items-center justify-between rounded-lg border border-white/10 bg-black/20 p-3 transition-colors hover:bg-black/30">
       <span className="text-sm text-slate-300">{name}</span>
       {configured ? (
         <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-400">
-          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+          <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
           Connected
         </span>
       ) : (
