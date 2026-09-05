@@ -1,4 +1,5 @@
 
+
 import type { VerificationStatus, GovernmentStatus, RiskLevel, MatchStatus, LivenessStatus, ForensicStatus, IdentityStatus } from '@/lib/types';
 
 type StatusType = VerificationStatus | GovernmentStatus | RiskLevel | MatchStatus | LivenessStatus | ForensicStatus | IdentityStatus | string;
@@ -27,6 +28,8 @@ const statusConfig: Record<string, { bg: string; text: string; border: string; d
   MISMATCH: { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/30', dot: 'bg-red-500' },
 
   UNVERIFIED: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/30', dot: 'bg-amber-500' },
+  SANDBOX_VALID: { bg: 'bg-cyan-500/10', text: 'text-cyan-400', border: 'border-cyan-500/30', dot: 'bg-cyan-500' },
+  SANDBOX_INVALID: { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/30', dot: 'bg-red-500' },
   'SERVICE UNAVAILABLE': { bg: 'bg-slate-500/10', text: 'text-slate-400', border: 'border-slate-500/30', dot: 'bg-slate-500' },
   'NOT_CONFIGURED': { bg: 'bg-slate-500/10', text: 'text-slate-400', border: 'border-slate-500/30', dot: 'bg-slate-500' },
   'NOT CONNECTED': { bg: 'bg-slate-500/10', text: 'text-slate-400', border: 'border-slate-500/30', dot: 'bg-slate-500' },
@@ -53,4 +56,5 @@ export default function StatusBadge({ status, size = 'md' }: { status: StatusTyp
     </span>
   );
 }
+
 
